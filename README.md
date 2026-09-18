@@ -2,7 +2,8 @@
 
 单页长文。拆 Jev 的单步判定、本地实测、失败模式和生产边界。
 
-仓库：[github.com/kuhung/understanding-jev](https://github.com/kuhung/understanding-jev)
+- 阅读：[understanding-jev.vercel.app](https://understanding-jev.vercel.app)
+- 仓库：[github.com/kuhung/understanding-jev](https://github.com/kuhung/understanding-jev)
 
 ## 本地预览
 
