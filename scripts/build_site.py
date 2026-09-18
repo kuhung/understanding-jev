@@ -331,6 +331,36 @@ body {
   top: 12px;
 }
 
+.github-corner {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 20;
+  color: #fff;
+  border: 0;
+}
+.github-corner svg {
+  display: block;
+  width: 72px;
+  height: 72px;
+  fill: var(--ink);
+}
+.github-corner .octo-arm,
+.github-corner .octo-body {
+  fill: #fff;
+}
+.github-corner:hover .octo-arm {
+  animation: octocat-wave 560ms ease-in-out;
+}
+@keyframes octocat-wave {
+  0%, 100% { transform: rotate(0); }
+  20%, 60% { transform: rotate(-25deg); }
+  40%, 80% { transform: rotate(10deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .github-corner:hover .octo-arm { animation: none; }
+}
+
 a:focus-visible,
 button:focus-visible {
   outline: 2px solid var(--link);
@@ -633,9 +663,11 @@ button:focus-visible {
   color: var(--muted);
 }
 .site-footer a { color: var(--muted); }
+.site-footer a:hover { color: var(--link); }
 
 @media (max-width: 760px) {
   .masthead h1 { font-size: 28px; padding-bottom: 14px; }
+  .github-corner svg { width: 56px; height: 56px; }
   .byline { margin-bottom: 40px; }
   .chapter-banner {
     height: auto;
@@ -737,13 +769,21 @@ def build() -> None:
 <body>
 <a class="skip-link lang-zh" href="#ch00-hero">跳到正文</a>
 <a class="skip-link lang-en" href="#ch00-hero" style="display:none">Skip to content</a>
+<a class="github-corner" href="https://github.com/kuhung/understanding-jev" target="_blank" rel="noopener" aria-label="GitHub">
+  <svg viewBox="0 0 250 250" aria-hidden="true">
+    <path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path>
+    <path class="octo-arm" d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.1,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.8,103.2" style="transform-origin:130px 106px"></path>
+    <path class="octo-body" d="M115.0,115.0 C114.8,115.1 116.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.6 C160.3,47.7 163.7,45.9 167.5,47.6 C171.4,49.3 172.9,52.3 172.2,56.2 C174.4,55.1 176.9,55.6 178.7,58.0 C181.8,61.6 183.8,73.8 183.8,73.8 C183.8,73.8 193.2,78.4 192.6,84.2 C191.9,90.0 190.2,82.8 185.4,83.0 C177.6,83.4 176.6,87.6 170.7,93.1 C166.9,96.8 156.7,102.6 147.3,108.6 L147.3,112.6 C147.3,114.1 147.9,116.6 150.6,118.2 C155.4,120.7 164.1,121.6 166.0,120.2 C168.0,118.7 170.2,115.3 169.5,107.5"></path>
+  </svg>
+</a>
 
 <header class="masthead">
   <h1 class="lang-zh">深入解读 Jev 模型：毫秒级判定与工程边界</h1>
   <h1 class="lang-en" style="display:none">Reading Jev: Millisecond Decisions and Engineering Limits</h1>
   <p class="byline lang-zh">
     撰写 <a href="https://kuhung.me" target="_blank" rel="noopener">kuhung</a>
-    <span class="sep">·</span>一线拆解
+    <span class="sep">·</span>
+    <a href="https://github.com/kuhung/understanding-jev" target="_blank" rel="noopener">GitHub</a>
     <span class="sep">·</span>
     <button type="button" class="is-active" data-lang="zh" aria-pressed="true" onclick="switchLang('zh')">中文</button>
     /
@@ -751,6 +791,8 @@ def build() -> None:
   </p>
   <p class="byline lang-en" style="display:none">
     Written by <a href="https://kuhung.me" target="_blank" rel="noopener">kuhung</a>
+    <span class="sep">·</span>
+    <a href="https://github.com/kuhung/understanding-jev" target="_blank" rel="noopener">GitHub</a>
     <span class="sep">·</span>
     <button type="button" data-lang="zh" aria-pressed="false" onclick="switchLang('zh')">中文</button>
     /
@@ -768,7 +810,10 @@ def build() -> None:
 {chapters_html}
 
 <footer class="site-footer">
-  <p>understanding-jev · git: {sha}</p>
+  <p>
+    <a href="https://github.com/kuhung/understanding-jev" target="_blank" rel="noopener">GitHub</a>
+    · git: {sha}
+  </p>
 </footer>
 
 <script>
