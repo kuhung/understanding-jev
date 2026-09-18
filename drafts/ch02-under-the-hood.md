@@ -1,15 +1,15 @@
 ## 拆底层 / Under the Hood
 
 <!-- lang:zh -->
-把 Jev 的引擎盖掀开来看，里面是一台精心校准的概率机器，不是什么黑魔法。工程界苦大模型延迟久矣。传统大模型处理分类或决策任务，必须启动自回归循环，逐个生成 Token。
+Jev 目前尚未完全开源，但结合官方技术报告与开源社区的逆向复现，它的实现路径已经相当明确。
 
-整个生成过程动辄耗费两到五秒，开发者还得在下游祈祷 JSON 括号不要漏闭合。Jev 的生成步数为零。输入提示词与候选动作后，底层网络只执行单次前向传播，毫秒级输出在数学上仅仅是一次矩阵运算的副产物。
+传统大模型处理分类或决策，必须启动自回归解码循环，逐个生成 Token。整个过程通常耗时 2 到 5 秒，下游还得小心处理 JSON 字符串是否闭合。Jev 的生成步数为零。输入提示词与候选动作后，底层网络只执行单次前向传播，输出在数学上只是一次矩阵乘法的副产物。
 
 <!-- DIAGRAM: 单次前向传播与自回归生成循环在步数与延迟上的核心计算链路对比 -->
 
-Jev 发布不到两小时，开源社区便拆解出两条复现路径。这套机制没有重写注意力层，完全建立在现成的因果模型底座之上。一线开发者迅速摸清了两种截然不同的工程取舍。
+开源社区在发布两小时内就跑通了两条复现路径，都不需要重写注意力机制，直接在开源小模型上就能运行。
 
-第一条路径是候选词 Logits 掩码投影。Harsha Gundal 发布的 [harshatheg/Qwen-2.5-1B-RLCD](https://github.com/harshatheg/Qwen-2.5-1B-RLCD) 验证了这种思路。模型在单次前向推理后提取序列最后一个位置的 logits，仅从数万词表中抽取目标候选项对应的 Token ID。局部 Softmax 归一化随即算出置信度，计算过程毫秒即成。
+第一条路径是候选词 Logits 掩码投影。社区项目 [harshatheg/Qwen-2.5-1B-RLCD](https://github.com/harshatheg/Qwen-2.5-1B-RLCD) 验证了这种思路：模型在单次前向推导后，直接提取序列最后一个位置的 Logits，仅筛选出候选标签对应的 Token ID，做局部 Softmax 归一化计算置信度。这也是过往做约束输出和意图路由时常用的方法。
 
 ```python
 # harshatheg/Qwen-2.5-1B-RLCD logits projection
@@ -18,7 +18,7 @@ candidate_logits = logits[:, candidate_token_ids]
 probs = torch.softmax(candidate_logits, dim=-1)
 ```
 
-第二条路径来自 NLI 交叉编码器架构。AlexWortega 开源的 [AlexWortega/openjev](https://github.com/AlexWortega/openjev) 选用 Qwen3.5-4B 与 Qwen3.5-35B-A3B MoE 作为底座。该方案把环境状态拼装为前提，把候选动作转化为假设。分类头直接输出蕴含、中立与矛盾三分类得分，工程上只需取蕴含概率的极大值完成路由。
+第二条路径是基于 NLI（自然语言推理）的交叉编码器架构。项目 [AlexWortega/openjev](https://github.com/AlexWortega/openjev) 选用 Qwen 系列作为底座，把输入上下文作为前提（Premise），候选动作作为假设（Hypothesis）。分类头直接输出蕴含、中立与矛盾三分类得分，取蕴含概率做决策。
 
 ```python
 # AlexWortega/openjev cross-encoder scoring
@@ -27,42 +27,32 @@ logits = cross_encoder(**inputs).logits
 entailment_score = logits[:, ENTAILMENT_IDX]
 ```
 
-<!-- DIAGRAM: Logits 掩码投影与 NLI 交叉编码器双路径推理机制对比 -->
-
-单次前向如果只能评估单个分支，依然无法应付生产环境的高吞吐诉求。Jev 依赖现代因果架构的前缀缓存共享机制化解了这一瓶颈。面对长达万字的业务上下文，模型在 Prefill 阶段仅计算一次并将其写入显存。
-
-五十到一百个候选决策并行挂载在同一份 KV 缓存之后。显卡无需为每个候选项重新扫描长文档，只要并行计算少量候选 Token 的注意力。系统评估五十个维度的总耗时几乎等同于单次评估。
+如果单次前向每次只能评估一个选项，面对高并发多选项时依然不够快。Jev 依靠 Decoder-only 架构的 KV Cache 前缀缓存共享来化解瓶颈。面对长文本上下文，模型在 Prefill 阶段只计算一次并存入显存，后续几十个候选选项共享同一份前缀缓存指针，只并行计算各自少量 Token 的注意力。这使得评估几十个维度的总耗时几乎等同于单次评估。
 
 <!-- DIAGRAM: 基于共享 Prefill KV 缓存的分支并行扇出推理机制 -->
 
-普通小模型为何不能直接套用这套逻辑？未经专门训练的开源模型普遍存在虚高的过度自信，表面给出 99% 的 Softmax 分数，实测真实准确率可能不及六成。工业级生产拦截系统无法依赖这种漂移严重的裸露数值。
+普通小模型为什么不能直接套用这套逻辑？熟悉机器学习的朋友清楚，Softmax 输出的分数只是指数归一化的相对值，不等于真实概率。未经专门校准的模型普遍存在严重的过度自信，即使预测完全错误，Softmax 也可能给出 0.99 的高分。工业级安全拦截系统不能直接依赖这种裸露数值。
 
-Jev 引入了面向校准决策的强化学习（RLCD）。这项训练策略放弃了人类偏好对齐，也不关心输出文本的语言修辞。损失函数直接瞄准预期校准误差（ECE）进行最小化优化，确保 0.82 的模型置信度能够严谨对应 82% 的真实准确率。
+Jev 引入了面向校准决策的强化学习（RLCD）。该训练方式不再关注生成句子的语言文采，而是针对预期校准误差（ECE）进行优化。简单来说，就是通过样本校验与惩罚，确保模型输出 0.8 的置信度时，在统计上真实对应约 80% 的准确率。
 
-严密的概率校准并未完全消除架构底层的不稳定。Archer Hume 开展的无关项扰动实验戳破了模型独立打分的假象。在既有的四个有效选项后追加一个与主题无关的天气选项，原最优候选项的优势 log-odds 竟从 +0.38 骤降至 +0.11。
+即便经过概率校准，也无法完全消除底层注意力的结构特性：
 
-这个落差证明候选项之间存在着不可忽视的交叉注意力交互。模型内部本质上在执行列表级排序，候选池中的干扰项会直接污染内部表征。开发者若误以为各选项是相互独立的事件，线上决策随时会发生不可预测的漂移。
+第一是无关选项的干扰。Archer Hume 的实验显示，在既有的四个有效选项后追加一个无关的“天气”选项，原有最优选项的优势 log-odds 会明显下滑。这说明候选项之间依然存在注意力交互，模型内部本质上是在做列表排序，选项并不是互相独立的。
 
-笔者实测发现，选项放置的物理位置同样暴露了因果自注意力的结构偏见。把关键参考卡片放在选项末尾时录得 16/16 全对，平均置信度达到 0.88。一旦把该卡片调至最前或中间位置，命中数迅速滑落到 11 左右。
+第二是选项的物理顺序敏感性。由于自回归模型的单向注意力机制，排在后面的 Token 能看到前面的所有上下文。如果参考依据出现的位置发生变动，或者选项顺序调整，判断结果就会产生波动。只有把依据放在共享的 Prompt 上下文（State）中，注意力分配才会更加均衡。
 
-只有当参考卡片作为背景事实放入共享的状态前提中，系统才能恢复 48/48 的全对表现。输入格式的微小变动足以在单次前向传播中激起剧烈震荡。
-
-<!-- DIAGRAM: 无关项扰动与选项位置偏移对决策准确率及置信度的影响曲线 -->
-
-有人据此认为 Jev 不过是 2018 年 BERT 分类器的旧瓶装新酒。这种判断低估了底座能力对结构化决策的支撑。BERT 狭小的上下文窗口和早期的词表结构，根本看不懂 Kubernetes 资源拓扑与 Python 异常堆栈。
-
-Jev 的骨架是经历万亿级 Token 预训练的现代因果 Transformer，并大概率采用了混合专家结构。它对 DOM 树、系统命令和工程代码的隐式理解，来自大规模预训练注入的世界知识。研发团队只是拆除了沉重的自回归排气管，将整台引擎的推力集中锁死在单步输出的概率槽位上。
+有人会问，这和 2018 年的 BERT 分类器有什么区别？区别在于底座的常识与上下文容量。BERT 的上下文窗口通常只有 512 Tokens，词表较小，无法理解长篇代码、系统日志与长篇业务文档。Jev 建立在经历海量预训练的现代因果 Transformer 底座上，具备现代语义理解能力，只是摘掉了自回归生成的环节。
 
 <!-- lang:en -->
-Pop the hood on Jev, and you find a finely calibrated probability engine rather than black magic. Engineering teams have spent years wrestling with the brutal latency of frontier models. Traditional language models tackle classification by firing up an autoregressive generation loop, spitting out tokens one by one.
+Jev is not fully open source. Official reports plus community reproductions already make the path clear.
 
-That text-generation loop burns two to five seconds while developers pray that the downstream parser does not choke on unclosed JSON brackets. Jev sets the generation step count to zero. Given a context prompt and candidate actions, the underlying network executes a single forward pass, delivering millisecond outputs as a direct byproduct of matrix multiplication.
+A normal LLM doing classification still runs an autoregressive decode, token by token. That often takes 2 to 5 seconds. Downstream still has to check whether the JSON closed. Jev generates zero tokens. After the prompt and candidate actions, the network does one forward pass. The output is a byproduct of a matrix multiply.
 
 <!-- DIAGRAM: Latency and execution path comparison between single forward pass and autoregressive generation loops -->
 
-Within two hours of Jev's release, the open-source community had reverse-engineered its core mechanics. Nobody needed to invent an alien attention mechanism. Practitioners immediately mapped out two distinct engineering paths built entirely on standard causal Transformer weights.
+The community had two reproductions within two hours of launch. Neither rewrites attention. Both run on ordinary open small models.
 
-The first path relies on logit projection over candidate tokens. Harsha Gundal demonstrated this pipeline in [harshatheg/Qwen-2.5-1B-RLCD](https://github.com/harshatheg/Qwen-2.5-1B-RLCD). The model runs a single forward pass, grabs the logits at the final sequence position, and extracts only the target token IDs out of the vocabulary. A quick local softmax normalizes the candidate logits into confidence scores in single-digit milliseconds.
+Path one is logit masking over candidate tokens. [harshatheg/Qwen-2.5-1B-RLCD](https://github.com/harshatheg/Qwen-2.5-1B-RLCD) shows the idea. After one forward pass, take logits at the last position, keep only candidate token IDs, and softmax locally for confidence. Constrained decoding and intent routing have used this for a long time.
 
 ```python
 # harshatheg/Qwen-2.5-1B-RLCD logits projection
@@ -71,7 +61,7 @@ candidate_logits = logits[:, candidate_token_ids]
 probs = torch.softmax(candidate_logits, dim=-1)
 ```
 
-The second path builds on Natural Language Inference cross-encoders. AlexWortega open-sourced this architecture in [AlexWortega/openjev](https://github.com/AlexWortega/openjev), using Qwen3.5-4B and Qwen3.5-35B-A3B MoE as backbones. This design frames the environment state as a premise and casts each candidate action as a hypothesis. The classification head outputs scores across entailment, neutral, and contradiction, picking the action with the maximum entailment probability.
+Path two is an NLI cross-encoder. [AlexWortega/openjev](https://github.com/AlexWortega/openjev) uses a Qwen base. Context is the premise. Each action is a hypothesis. The head scores entailment, neutral, and contradiction. Entailment probability is the decision.
 
 ```python
 # AlexWortega/openjev cross-encoder scoring
@@ -80,28 +70,18 @@ logits = cross_encoder(**inputs).logits
 entailment_score = logits[:, ENTAILMENT_IDX]
 ```
 
-<!-- DIAGRAM: Comparison between Logit Projection and NLI Cross-Encoder inference pipelines -->
-
-Evaluating candidate actions one by one through single forward passes still hits a wall on production throughput. Jev clears this hurdle by leaning on prefix cache sharing across speculative branches. When processing massive context documents, the prefill stage runs exactly once and commits the key-value states to GPU memory.
-
-Fifty to one hundred candidate decisions then fan out directly against that pinned KV cache. The GPU never re-reads the background context, computing attention only over the short candidate suffixes. Scoring fifty branching dimensions takes roughly the same wall-clock time as evaluating one.
+One option per forward pass is still slow when many options arrive at once. Jev leans on decoder-only KV cache prefix sharing. Long context is prefilled once into GPU memory. Later candidates share that prefix pointer and only compute attention on a few extra tokens. Scoring dozens of dimensions takes about as long as scoring one.
 
 <!-- DIAGRAM: Shared prefill KV-cache architecture powering parallel fan-out speculative evaluation -->
 
-Why can off-the-shelf small models not pull off this trick directly? Standard open-weight models suffer from chronic overconfidence, often printing a 0.99 softmax score when their real-world accuracy barely clears 60 percent. Production safety filters and high-speed routers cannot gamble on uncalibrated confidence numbers.
+Why not drop any small model into this slot? Softmax scores are relative, not true probabilities. Uncalibrated models are overconfident. A wrong answer can still print 0.99. A production interceptor cannot trust that raw number.
 
-Jev solves this distortion through Reinforcement Learning for Calibrated Decisions (RLCD). The training loop scraps human preference alignment and discards stylistic prose tuning. The loss function minimizes Expected Calibration Error (ECE) directly, forcing a 0.82 confidence score to represent an actual 82 percent success rate.
+Jev trains with RLCD, reinforcement learning for calibrated decisions. The objective is Expected Calibration Error, not pretty sentences. After sample checks and penalties, a reported 0.8 confidence should land near 80% accuracy.
 
-Even rigorous probability calibration cannot hide the mechanical cracks in the architecture. Archer Hume exposed this vulnerability through an irrelevant option perturbation experiment. Appending an irrelevant fifth option like weather to four valid choices caused the winning candidate's log-odds advantage to collapse from +0.38 to +0.11.
+Calibration does not erase attention structure.
 
-That collapse proves candidate options interact aggressively through cross-attention. The model performs listwise ranking rather than independent point-wise evaluations. Assuming candidate choices are isolated events will lead production systems straight into erratic routing errors.
+First, irrelevant options interfere. Archer Hume added a dummy weather option after four valid ones. The winning option's log-odds dropped. Candidates still attend to each other. The model is ranking a list. Options are not independent.
 
-Positional bias in causal self-attention creates another sharp fault line. My validation runs confirmed that placing the reference card at the end of the candidate list yielded a flawless 16 out of 16 run with 0.88 average confidence. Moving that card to the beginning or middle dropped accuracy down to 11 out of 16.
+Second, physical order matters. Causal attention lets later tokens see everything before them. Move the evidence, or shuffle options, and the answer can move. Put evidence in the shared prompt state so attention is more even.
 
-Accuracy bounced back to 48 out of 48 only when the reference facts were moved into the shared premise state. Minor formatting quirks trigger massive probability swings inside a single forward pass.
-
-<!-- DIAGRAM: Decision accuracy and confidence degradation under distractor perturbation and option order shifts -->
-
-Some skeptics dismissed Jev as nothing more than a 2018 BERT cross-encoder repackaged in modern marketing. That critique misses the immense representational depth required for software engineering decisions. BERT's tiny context windows and primitive tokenizers choke on Kubernetes manifests and Python stack traces.
-
-Jev relies on a modern causal Transformer pre-trained on trillions of tokens, very likely backed by a mixture-of-experts architecture. Its grasp of DOM trees, system commands, and code logic comes from massive internet-scale pre-training. Its creators simply disconnected the sluggish autoregressive exhaust pipe and channeled raw model capacity straight into calibrated probability logits.
+People ask how this differs from a 2018 BERT classifier. The gap is world knowledge and context size. BERT is usually 512 tokens and a small vocabulary. It struggles with long code, logs, and business documents. Jev sits on a modern causal Transformer with large-scale pretraining. The generation loop is what got removed.

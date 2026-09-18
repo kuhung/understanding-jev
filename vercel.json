@@ -1,0 +1,6 @@
+{
+  "framework": null,
+  "installCommand": "pip3 install -r requirements.txt",
+  "buildCommand": "python3 scripts/build_site.py && mkdir -p dist && cp index.html dist/index.html",
+  "outputDirectory": "dist"
+}

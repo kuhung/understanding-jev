@@ -1,39 +1,19 @@
-## 理解 Jev / Understanding Jev
+## 深入解读 Jev 模型：毫秒级判定与工程边界 / Reading Jev: Millisecond Decisions and Engineering Limits
 
 <!-- lang:zh -->
-大语言模型正在拖垮现代工程架构的响应底线。为了给业务事件选一个枚举标签，系统被迫启动自回归循环，等待漫长的两秒钟并为大量无用 Token 买单。这是一份一线开发者对 Jev 与单步决策模型的拆解笔记。这里不做技术布道，只做工程解剖。
+在过去的项目里，我为了优化接口延迟花过不少功夫。用户对响应速度其实高度敏感。系统一旦超过一两秒没动静，看起来就像坏了一样。现实情况是，很多大模型为了做推理思考，响应动辄两三秒甚至更久。大家虽然尝试了各种工程手段去优化，但大模型逐字做自回归生成的本质摆在那里，延迟很难压缩到极致。
 
-为什么这个单步决策模型能在工程界掀起波澜？它用 57 毫秒判定一份 3 万字的系统事故报告，耗时比人类眨眼还要短暂。它的输出 Token 收费是零，不是打折促销，而是底层彻底剥离了生成循环。这项号称闭源研发两年的秘密武器，在上线当天就被开源社区用两小时反推了实现路径。
+很多时候，我们并不需要一个能写长篇大论的推理模型。在做状态判断或者枚举分类时，响应速度远比生成能力更重要。这就是我想聊聊 Jev 的原因。
 
-<!-- DIAGRAM: 单步决策模型全景与九大篇章拆解架构 -->
+为什么这个模型最近能掀起波澜？通用大模型的方向在业界已经基本固定，新进的产品团队必须寻找差异化的切入点。Jev 号称闭门研发了两年，主打的就是极速响应。它去掉了自回归生成循环，输入按 Token 计费，输出 Token 则是零元。这很合理，它本质上是一个判别器模型，就像没有人会为随机森林的输出结果按 Token 买单一样。
 
-理解单步决策模型不需要复杂的玄学隐喻。整份笔记拆解为九个独立篇章，覆盖从底层数学原理到生产落地的全部链路。读者可以根据当下面临的架构瓶颈，按需查阅各章的实测数据与代码实现。
-
-1. **[Jev 是什么 / What Is Jev](#jev-是什么--what-is-jev)**：被包装成新物种的统计分类器。
-2. **[拆底层 / Under the Hood](#拆底层--under-the-hood)**：一台精心校准的概率机器。
-3. **[20 行脚本跑一遍 / Run It Yourself](#20-行脚本跑一遍--run-it-yourself)**：跑一遍才算数。
-4. **[万次压测数据说话 / 10,000 Probes](#万次压测数据说话--10000-probes)**：独立第三方压测。
-5. **[失败课 / Failure Lessons](#失败课--failure-lessons)**：硬上限在哪。
-6. **[四大设计模式 / Four Patterns](#四大设计模式--four-patterns)**：组合使用模式。
-7. **[生产架构 / Production Architecture](#生产架构--production-architecture)**：20ms 神经反射弧。
-8. **[生态地图 / Ecosystem Map](#生态地图--ecosystem-map)**：社区比官方快。
-9. **[该不该用 / Should You Use It](#该不该用--should-you-use-it)**：System 1 还是 System 2。
+整份笔记整理了 Jev 的技术原理、本地实测、常见设计模式与生产适用边界，供大家在架构设计和选型时参考。
 
 <!-- lang:en -->
-Large language models are breaking the latency budgets of modern systems. Forcing an autoregressive loop to run for two seconds just to return a single enum label burns engineering sanity and cloud spend. This document is a hands-on dissection of Jev and single-step evaluation models from an infrastructure developer's bench. There is no vendor evangelism here, only empirical mechanics, edge-case failures, and architectural trade-offs.
+In past projects, I spent a lot of time cutting API latency. Users are highly sensitive to response speed. Once a system sits still for a second or two, it looks broken. Many large models take two or three seconds, sometimes more, just to reason. Teams try all kinds of engineering tricks. Autoregressive generation still writes tokens one by one, so latency is hard to squeeze down.
 
-Why has this single-step evaluation paradigm triggered such fierce engineering curiosity? It evaluates a 30,000-word post-mortem report in 57 milliseconds, faster than a human eye blinks. Its output tokens are billed at zero, not as a pricing discount, but because the underlying forward pass eliminates the generation loop entirely. What was guarded as a proprietary secret for two years was reverse-engineered by the open-source community within two hours of release.
+A lot of the time, we do not need a model that writes long essays. For state checks and enum classification, speed matters more than generation. That is why I want to talk about Jev.
 
-<!-- DIAGRAM: Overview of single-step evaluation architecture and nine-chapter dissection roadmap -->
+Why did this model stir things up recently? The direction of general-purpose large models is mostly settled. New product teams have to find a different angle. Jev claims two years of closed development, and it sells extreme speed. It drops the autoregressive loop. Input is billed by tokens. Output tokens are free. That is fair. It is a discriminator. Nobody pays per token for a random forest score either.
 
-Understanding single-step evaluation models requires zero mystical metaphors. This teardown is organized into nine standalone chapters covering foundational mechanics, failure limits, and production topology. Jump directly into whichever section addresses your immediate infrastructure bottlenecks.
-
-1. **[What Is Jev](#jev-是什么--what-is-jev)**: A statistical classifier masquerading as a new AI species.
-2. **[Under the Hood](#拆底层--under-the-hood)**: A finely calibrated probability machine.
-3. **[Run It Yourself](#20-行脚本跑一遍--run-it-yourself)**: Code only counts when executed locally.
-4. **[10,000 Probes](#万次压测数据说话--10000-probes)**: What independent stress testing reveals.
-5. **[Failure Lessons](#失败课--failure-lessons)**: Where hard computational limits bite.
-6. **[Four Patterns](#四大设计模式--four-patterns)**: Battle-tested compositional paradigms.
-7. **[Production Architecture](#生产架构--production-architecture)**: Wiring a 20ms neural reflex arc.
-8. **[Ecosystem Map](#生态地图--ecosystem-map)**: Why the open-source community moves faster than official labs.
-9. **[Should You Use It](#该不该用--should-you-use-it)**: Choosing between System 1 reflexes and System 2 deliberation.
+This note covers Jev's technical path, local tests, common patterns, and where it belongs in production. Use it when you design architecture and pick models.

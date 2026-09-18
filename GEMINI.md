@@ -25,10 +25,11 @@
    - 主导负责：整体定位、审美风向、行文气韵、叙事把控与最终验收。
    - 子 Agent 分包：代码实现、批处理、数据清洗、脚本与模板生成等工程活充分分包给轻量/中量模型执行，由主 Agent 严格按照设计品味验收把关。
 
-2. **设计品味（硅谷极客风格 / Modern Clean Silicon Valley）**：
-   - 拒绝死气沉沉的纯黑极客洞穴风（黑不溜秋）。
-   - 视觉基调：干净明亮的暖白底色（`#fafafa` / `#ffffff`），克制且高对比的现代排版，精准层次感。
-   - 字体层次：Inter / -apple-system 无衬线体，搭配 JetBrains Mono 代码体。标题醒目沉稳（Slate 900），副标题轻盈（Slate 500），正文通透好读（Slate 700 / 17px / line-height 1.8）。
-   - 视觉质感：精细边框（Border Slate 200）、轻柔卡片阴影（Subtle Elevation / Box-shadow）、微圆角（Rounded 12px~16px）、清晰且考究的图表与表格。
-   - 强调色：硅谷标志性科技蓝/靛蓝（Indigo 600 `#4f46e5` 或 Blue 600 `#2563eb`），点缀琥珀/翠绿做状态指示。
-   - 兼顾深度与趣味：图文并茂，图表美观丰富，让硬核技术拆解像 Stripe / Linear / Vercel 官方技术专栏或顶级独立深度白皮书一样赏心悦目。
+2. **设计品味（Editorial Playbook / 插图长文）**：
+   - 交付形态对齐 Startup Playbook：单页长文，不是产品文档，也不是 Stripe/Linear 风白皮书。
+   - 视觉基调：纯白底 `#ffffff`，一条中轴，700px 正文栏。不要点阵底、不要黏性顶栏、不要右侧 TOC、不要玻璃拟态、不要圆角阴影卡片。
+   - 字体层次：标题用 condensed 无衬线（Pathway Gothic One + Noto Sans SC），居中、带浅灰底线。正文 Noto Sans SC / Helvetica Neue，17px / line-height 1.9，颜色 `#4b5563`。代码用 JetBrains Mono，浅底、无 macOS 三色点。
+   - 导航：九章工程线稿图标地图 + 每章全宽浅色横幅。线稿是分类器、终端、波形、闸门这类工程隐喻，不是卡通人物。
+   - 色彩：标题墨色 `#1a1a1a`，链接墨蓝 `#1d4ed8`。不要抄 YC 橙 `#ec6812`。
+   - 技术图：代码、表格、架构图作为编辑型 figure 留下，细边框、无徽章。匹配不上的 DIAGRAM 占位直接省略。
+   - 页脚写入 Git 短 SHA，便于 Vercel 页面追踪。

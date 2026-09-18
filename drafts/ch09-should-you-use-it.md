@@ -1,91 +1,113 @@
 ## 该不该用 / Should You Use It
 
 <!-- lang:zh -->
-大多数团队的真实问题不是 Jev 好不好，而是当前场景到底需要 System 1 还是 System 2。翻开生产环境中的网关日志，工业界八成到九成的 LLM API 调用根本不需要生成优美长文。团队付着每百万 Token 几美元的高昂账单并忍受数秒延迟，仅仅是为了提取用户意图、打上分类标签或者决定网关放行。笔者在大量生产系统的重构现场看到，开发者对生成式大模型的滥用已经到了惊人的地步。
+在做架构设计时，首先要明确业务究竟需要的是快速的直觉判断，还是深度的因果推演。很多系统为了做一次枚举分类，让数百亿参数的模型去逐字生成，本质上是算力错配。
 
-把生成模型当路由交换机使用，是当下 AI 架构中最普遍的算力错配。许多系统为了一句单薄的意图判断，盲目启动数百亿参数的自回归循环。System 1 的脊髓单步反射与 System 2 的大脑深思推演被混为一谈，导致系统吞吐量在流量高峰期瞬间瘫痪。认清这两种认知模式的边界，比盲目追求模型跑分要实在得多。
+### 选型四问
 
-### 决策自检清单
+1. **请求是否高度可枚举？** 如果绝大多数请求都在预设类别内，直接用单步判别模型更经济；如果是开放长尾输入，则需要大模型。
+2. **标签体系是否稳定？** 频繁变更的分类标签需要动态传入候选集；长期稳定的标签更适合离线轻量化微调。
+3. **分类错误的容错成本多高？** 如果容错率低（如涉及资金支付），必须有规则引擎兜底或人工复核机制。
+4. **是否有基准标注数据？** 缺少基准数据时很难检验分类与校准效果，贸然自建模型容易过拟合。
 
-业务请求中有多少比例是重复且可枚举的？如果九成以上的用户请求都在预设意图集合内打转，自回归模型逐字吐词纯属浪费电力。高频重复的流量只配享有脊髓反射的计算预算。只有真正游离在常规模式之外的长尾输入，才值得转交昂贵的大脑皮层进行深思。
+### 三种范式权衡
 
-下游依赖的分类标签到底有多稳定？业务团队如果每周都要推翻重构分类目，微调小模型的维护开销会迅速抹平微小的延迟收益。标签体系半年不变更的静态场景才配谈结构固化。频繁变动的动态业务必须依赖支持运行时动态候选项的开放接口。
+| 评估维度         | 传统 BERT 分类器             | 生成式大模型 (LLM)            | Jev / 单步判别模型             |
+| ---------------- | ---------------------------- | ----------------------------- | ------------------------------ |
+| **运行时灵活性** | 较低（标签固定，增删需重训） | 极高（提示词自由定义输出）    | 较高（运行时动态传入候选选项） |
+| **通用常识储备** | 较弱（依赖垂直域监督信号）   | 极丰富（海量通用常识）        | 丰富（继承大模型预训练常识）   |
+| **上下文长度**   | 短（通常 512 Tokens）        | 极长（可达数十万 Tokens）     | 中长（依赖底座长文本缓存）     |
+| **推理延迟**     | 极快（通常小于 20ms）        | 较慢（数百毫秒至数秒）        | 快（20ms 至 200ms）            |
+| **输出形式**     | 固定分类概率分布             | 生成文本（易产生格式波动）    | 结构化离散概率直出             |
+| **置信度质量**   | 需额外标定                   | 原始 logits 虚高较普遍        | 经校准训练后较为可信           |
+| **深度推理能力** | 无                           | 极强（支持多步思维链）        | 弱（仅限单步模式匹配）         |
 
-业务流水线对分类错误的容忍度究竟有多高？如果分错类的代价仅仅是消耗几毫秒触发一次重试，单步快速放行就是最划算的工程赌注。一旦判定失误会引发资金穿透或不可逆的系统删库，单步前向矩阵绝不可能承担终审责任。高危业务链路永远需要规则兜底和降级审查通道。
+### 适用与不适用
 
-工程团队手头到底沉淀了多少真实标注数据？缺少高质量的基准样本时，单步决策模型的评测与校准都会退化为盲人摸象。冷启动阶段强行上马自建微调方案，最后往往只能交付一堆过拟合的残次品。摸清数据家底是做出任何架构决策的前提。
+适合使用单步判别模型的场景：
+- 入口处的意图识别与路由分发
+- 高并发内容合规预筛
+- 敏感 API 与终端命令权限审查
+- 流程中固定的枚举状态流转
 
-### 三种决策范式权衡
+不适合使用的场景：
+- 需要向用户直接输出自然语言解释
+- 依赖两步以上因果推理的任务
+- 涉及多层伪装的安全风控
+- 缺乏明确候选选项的开放式生成
 
-技术选型从来不是非黑即白的站队游戏。传统 BERT 分类器、生成式大模型与以 Jev 为代表的 System 1 单步决策模型各自站在不同的权衡端点上。
+### 两点工程建议
 
-| 评估维度 | 传统 BERT 分类器 | 生成式大模型 (LLM) | Jev / System 1 决策模型 |
-| :--- | :--- | :--- | :--- |
-| **运行时灵活性** | 极低（标签固化，增删需重训） | 极高（提示词自由定义输出） | 高（运行时动态传入候选选项） |
-| **知识储备** | 弱（仅限垂直域监督信号） | 极丰富（海量通识与专业常识） | 丰富（继承大底座预训练通识） |
-| **上下文长度** | 短（通常限制在 512 Token） | 极长（可达 128k 到 1M Token） | 中等（几千到数万 Token） |
-| **推理速度** | 极快（通常小于 20ms） | 极慢（数百毫秒至数秒） | 快（20ms 至 200ms） |
-| **输出稳定性** | 确定（固定分类概率分布） | 波动（受温度系数与采样扰动） | 确定（非自回归矩阵直出） |
-| **置信度可信度** | 需额外后校准（易过度自信） | 差（自回归 logits 虚高严重） | 优（经专用校准训练后可信） |
-| **深度推理能力** | 无（线性表征投影） | 极强（支持多步因果与思考链） | 弱（仅限单步前向特征模式匹配） |
+第一，如果分类准确率要求极高且依赖多步推导，建议直接使用具备思维链的大模型。单步前向推导缺少中间思考过程，遇到多层转折容易失准。
 
-BERT 便宜快速但缺乏现代通用常识，修改分类目更是漫长的工程噩梦。生成式大模型通晓万物且具备深厚推理，却背负着不可预测的延迟和漂移的置信度。Jev 这类单步决策模型剥离了生成头，用预训练通识支撑动态候选项，换取到了高确定性与毫秒级时延。
+第二，冷启动阶段如果缺少标注数据，可以先用通用大模型的 Few-shot 提示词跑通业务流程，顺带沉淀真实访问日志。等数据积累到一定规模并完成标注后，再考虑用单步判别模型做替换或蒸馏。
 
-<!-- DIAGRAM: 决策模型选型光谱：BERT、Jev 单步决策与生成式 LLM 在灵活性、速度与推理深度上的权衡三棱镜 -->
+### 相关项目索引
 
-### 适用与禁忌边界
-
-哪些场景最适合单步决策模型大显身手？网关处的意图路由、海量内容审核预筛与 API 权限门禁是其发挥优势的天然阵地。在智能体运行循环中，工单分类、死循环检测、面对海量 DOM 节点的元素筛选以及安全拦截网关，都依赖单步决策在极低时延下给出确定判定。这些任务只需要干净的离散标签，任何自回归文字生成都是纯粹的资源浪费。
-
-哪些场景坚决不能接入单步决策模型？业务如果需要向用户直接输出自然语言文本，单步网络在物理机制上无法胜任。涉及多步复杂推理、标签体系朝令夕改、需要给出透明解释理由以及包含复杂因果链的安全风控，单步前向传播必然失准。把充满层层伪装的攻击流量交给无思考链的单步网络，只会给整个系统埋下定时炸弹。
-
-### 两个不舒服的工程结论
-
-如果分类精度要求高于 90% 且问题依赖多步因果推导，老老实实调用 Claude 或 GPT 的思考链。缺乏自回归支架的单步前向计算在两层以上的逻辑反转面前会迅速崩溃。宁可忍受两秒等待并多付几十倍费用，也不要在没有思维链保护的高危决策上盲目冒险。认清算力规律能避免灾难性的生产事故。
-
-如果手头连几百条干净的标注数据都拿不出来，不要急着部署 System 1 模型。最稳妥的路径是用通用大模型的少样本提示词跑通业务原型，顺带收集沉淀真实访问日志。等真实数据集清洗标注齐备，再考虑将其蒸馏压缩进单步决策模型。越过数据积累去追求轻量架构，属于典型的工程自嗨。
+- Archer Hume Jev 接口压测记录
+- [rorshopping/jev-on-a-laptop](https://github.com/rorshopping/jev-on-a-laptop) - 裸 Qwen Logits 与 Jev 一致性对比
+- [anisselbd/jev-phishing-bench](https://github.com/anisselbd/jev-phishing-bench) - 钓鱼邮件单步 vs 思考链基准测试
+- [harshatheg/Qwen-2.5-1B-RLCD](https://github.com/harshatheg/Qwen-2.5-1B-RLCD) - Logits 掩码与 PCD 复现
+- [AlexWortega/openjev](https://github.com/AlexWortega/openjev) - NLI 交叉编码器实现
+- [multimodalart/jev-reproductions-tracker](https://huggingface.co/spaces/multimodalart/jev-reproductions-tracker) - 社区复现追踪
+- [AnotiaWang/awesome-jev](https://github.com/AnotiaWang/awesome-jev) - Jev 生态索引
+- [browser-use/jev-ultrafast](https://github.com/browser-use/jev-ultrafast) - 浏览器自动化实验
+- [droidrun/mobile-jev](https://github.com/droidrun/mobile-jev) - 移动端 Agent 实验
+- [DevMortimer/pi-warden](https://github.com/DevMortimer/pi-warden) - 命令守卫网关
 
 <!-- lang:en -->
-The real dilemma facing engineering teams is rarely whether Jev is intrinsically good. The decisive question is whether your production workload demands System 1 reflex or System 2 deliberation. Examining production telemetry reveals an uncomfortable reality. Eighty to ninety percent of corporate LLM API requests do not require eloquent prose generation. Teams bleed budgets on multi-second latency and painful cloud invoices merely to classify an intent, stamp a boolean flag, or toggle a security gate.
+When you design the architecture, first decide whether the job needs fast instinct or slow causal work. Many systems spin a tens-of-billions model to emit one enum. That is a compute mismatch.
 
-Treating an autoregressive foundation model as a routing switch represents a massive architectural misallocation. Pipelines spin up tens of billions of parameters to output trivial conditional branching. Conflating spinal reflex with cerebral deduction inflates operating costs while degrading API throughput under load spikes. Recognizing boundaries between these cognitive layers matters far more than obsessing over benchmark leaderboards.
+### Four questions
 
-### Decision Checklist
+1. **Are requests highly enumerable?** If most traffic sits in a known set, a single-step discriminator is cheaper. Open-ended tails still need a large model.
+2. **Is the label set stable?** Labels that change often should be passed in at runtime. Stable labels can be distilled offline.
+3. **What does a wrong label cost?** Low tolerance work, payments included, needs rules or a human behind it.
+4. **Do you have gold labels?** Without them, you cannot check accuracy or calibration. Homegrown models overfit easily.
 
-What fraction of your production traffic falls into repetitive or enumerable patterns? When ninety percent of queries cycle through fixed intent clusters, autoregressive token generation wastes kilowatt-hours. Repetitive high-volume traffic deserves only the computational budget of a spinal reflex. Only edge cases that escape known distributions justify awakening the expensive cerebral cortex.
+### Three-way trade-off
 
-How stable is your target taxonomy over time? If your product team alters classification categories on a weekly basis, fine-tuning and deploying custom classifiers will quickly erode operational gains. Hardening weights only makes economic sense when taxonomies remain fixed for quarters. Dynamic environments with shifting business rules require interfaces that accept runtime candidate definitions without retraining.
+| Dimension | Classic BERT | Generative LLM | Jev / single-step |
+| --------- | ------------ | -------------- | ----------------- |
+| **Runtime flexibility** | Low. Labels are frozen. Adds need retraining. | High. Prompt defines the output. | Higher. Candidates arrive at runtime. |
+| **World knowledge** | Weak. Needs in-domain labels. | Very rich. | Rich. Inherits pretraining. |
+| **Context length** | Short. Often 512 tokens. | Very long. Hundreds of thousands. | Mid-long. Depends on the base cache. |
+| **Latency** | Very fast. Often under 20 ms. | Slow. Hundreds of ms to seconds. | Fast. 20 to 200 ms. |
+| **Output** | Fixed class distribution | Generated text, format can drift | Structured discrete probabilities |
+| **Confidence** | Needs extra calibration | Raw logits often too high | More usable after calibration training |
+| **Deep reasoning** | None | Strong. Multi-step chains. | Weak. Single-step pattern match. |
 
-What is your system's true fault tolerance, and what is the real cost of a misclassification? If a routing mistake costs only a few milliseconds of automated retry overhead, fast single-step evaluation represents a smart trade. If a false negative triggers financial leakage or accidental database corruption, a single forward pass must never serve as the final authority. High-stakes workflows demand deterministic guardrails and escalation paths.
+### Fit and non-fit
 
-How much clean, validated ground-truth data sits in your repositories? Without high-grade evaluation datasets, benchmarking and calibrating small decision models becomes an exercise in self-deception. Rushing into custom fine-tuning during the zero-data cold start yields brittle, overfitted weights. Knowing your data inventory determines when you can afford to transition architectures.
+Use a single-step discriminator for:
 
-### Evaluating the Three Paradigms
+- Intent and routing at the door
+- High-volume compliance prefilter
+- Sensitive API and shell permission checks
+- Fixed enum state machines
 
-Engineering decisions avoid absolute dogma. Traditional BERT classifiers, generative LLMs, and System 1 decision models occupy distinct coordinates across the trade-off space.
+Skip it for:
 
-| Evaluation Dimension | Traditional BERT Classifier | Generative LLM | Jev / System 1 Decision Model |
-| :--- | :--- | :--- | :--- |
-| **Runtime Flexibility** | Minimal (fixed labels, requires retraining) | Maximal (arbitrary prompting and open output) | High (accepts dynamic candidates at runtime) |
-| **World Knowledge** | Poor (limited to narrow task supervision) | Vast (broad commonsense and factual reasoning) | Rich (inherits large pre-trained base representations) |
-| **Context Window** | Short (typically constrained to 512 tokens) | Massive (128k to 1M tokens) | Moderate (thousands to tens of thousands of tokens) |
-| **Inference Latency** | Ultra-fast (typically under 20ms) | Slow (hundreds of milliseconds to seconds) | Fast (20ms to 200ms) |
-| **Output Determinism** | Deterministic (fixed classification head logits) | Variable (subject to temperature and sampling noise) | Deterministic (direct non-autoregressive projection) |
-| **Confidence Reliability** | Requires external calibration (prone to overconfidence) | Unreliable (autoregressive token logits drift heavily) | High (calibrated via explicit alignment objectives) |
-| **Deep Reasoning Capacity** | None (linear feature projections) | Exceptional (multi-hop causal and chain-of-thought logic) | Weak (constrained to single-step pattern matching) |
+- Natural language explanations to users
+- Work that needs two or more causal hops
+- Security cases with stacked disguise
+- Open generation with no candidate list
 
-BERT delivers sub-twenty-millisecond latency at minimal expense, but its brittle taxonomy demands engineering sprints for every schema modification. Generative models possess broad factual awareness and deep logic, yet their autoregressive decoding inflates latency and produces uncalibrated confidence scores. System 1 decision models discard text generation heads, leveraging pre-trained commonsense to score dynamic options with deterministic millisecond speed.
+### Two notes
 
-<!-- DIAGRAM: Decision model selection spectrum: trade-off prism across BERT, Jev System 1, and generative LLMs in flexibility, latency, and reasoning depth -->
+If you need very high accuracy plus multi-step deduction, use a model with chain-of-thought. A single forward pass has no scratchpad. Nested turns throw it off.
 
-### Where to Deploy and Where to Avoid
+If you have almost no labels, run the product on a general LLM with few-shot prompts and keep the logs. After you have a cleaned set, distill or replace with a single-step discriminator.
 
-Where do single-step decision models deliver unmistakable value? Inbound intent routing, front-line content moderation, and fine-grained API permission gates represent their natural habitat. Production pipelines managing ticket classification, agentic loop detection, DOM node pruning, and perimeter security firewalls gain sub-second determinism without generational overhead. These workloads require discrete labels, making autoregressive token generation completely superfluous.
+### Index
 
-Where must teams avoid single-step decision models? Any application requiring natural language output to human users falls beyond the physical capability of non-autoregressive networks. Workloads demanding multi-step reasoning, frequently shifting taxonomy definitions, transparent decision rationales, or complex causal attribution fail under single forward passes. Routing sophisticated social-engineering attacks into a single-step network without reasoning chains invites operational catastrophe.
-
-### Two Uncomfortable Engineering Truths
-
-When a task demands classification precision above ninety percent alongside multi-hop causal deduction, deploy Claude or GPT with deliberate reasoning chains. Single forward-pass matrices collapse when deceptive inputs feature multiple layers of misdirection. Paying fifty times more compute for a two-second reasoning cycle beats gambling critical infrastructure on a model stripped of intermediate thought. Respecting physical compute constraints prevents catastrophic outages.
-
-Teams lacking hundreds of validated ground-truth samples should resist deploying System 1 models prematurely. The pragmatic roadmap uses general-purpose LLMs and few-shot prompts to establish working prototypes while harvesting real user traffic. Once datasets reach critical mass and undergo rigorous cleaning, distillation into lightweight classifiers delivers compounding returns. Skipping data curation to chase low latency is architectural vanity.
+- Archer Hume Jev API load tests
+- [rorshopping/jev-on-a-laptop](https://github.com/rorshopping/jev-on-a-laptop) - raw Qwen logits vs Jev
+- [anisselbd/jev-phishing-bench](https://github.com/anisselbd/jev-phishing-bench) - phishing, single-step vs chain-of-thought
+- [harshatheg/Qwen-2.5-1B-RLCD](https://github.com/harshatheg/Qwen-2.5-1B-RLCD) - logit mask and PCD
+- [AlexWortega/openjev](https://github.com/AlexWortega/openjev) - NLI cross-encoder
+- [multimodalart/jev-reproductions-tracker](https://huggingface.co/spaces/multimodalart/jev-reproductions-tracker) - community tracker
+- [AnotiaWang/awesome-jev](https://github.com/AnotiaWang/awesome-jev) - ecosystem index
+- [browser-use/jev-ultrafast](https://github.com/browser-use/jev-ultrafast) - browser automation
+- [droidrun/mobile-jev](https://github.com/droidrun/mobile-jev) - mobile agent
+- [DevMortimer/pi-warden](https://github.com/DevMortimer/pi-warden) - command guard
