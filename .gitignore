@@ -37,3 +37,4 @@ scratch/
 tmp/
 *.tmp
 dist/
+.vercel
