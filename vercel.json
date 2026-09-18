@@ -1,6 +1,6 @@
 {
   "framework": null,
-  "installCommand": "pip3 install -r requirements.txt",
-  "buildCommand": "python3 scripts/build_site.py && mkdir -p dist && cp index.html dist/index.html",
+  "installCommand": "echo skip",
+  "buildCommand": "mkdir -p dist && SHORT=$(printf '%s' \"${VERCEL_GIT_COMMIT_SHA:-unknown}\" | cut -c1-7) && sed \"s/git: [0-9a-f][0-9a-f]*/git: $SHORT/\" index.html > dist/index.html",
   "outputDirectory": "dist"
 }

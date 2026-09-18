@@ -1,0 +1,8 @@
+drafts
+eval
+examples
+scripts
+*.md
+AGENTS.md
+GEMINI.md
+requirements.txt
