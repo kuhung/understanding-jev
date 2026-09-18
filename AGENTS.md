@@ -29,7 +29,7 @@
    - 交付形态对齐 Startup Playbook：单页长文，不是产品文档，也不是 Stripe/Linear 风白皮书。
    - 视觉基调：纯白底 `#ffffff`，一条中轴，700px 正文栏。不要点阵底、不要黏性顶栏、不要右侧 TOC、不要玻璃拟态、不要圆角阴影卡片。
    - 字体层次：标题用 condensed 无衬线（Pathway Gothic One + Noto Sans SC），居中、带浅灰底线。正文 Noto Sans SC / Helvetica Neue，17px / line-height 1.9，颜色 `#4b5563`。代码用 JetBrains Mono，浅底、无 macOS 三色点。
-   - 导航：九章工程线稿图标地图 + 每章全宽浅色横幅。线稿是分类器、终端、波形、闸门这类工程隐喻，不是卡通人物。
+   - 导航：九章工程线稿图标地图 + 每章居中浅色横幅（最大 1200px，不是视口全宽）。线稿是分类器、终端、波形、闸门这类工程隐喻，不是卡通人物。
    - 色彩：标题墨色 `#1a1a1a`，链接墨蓝 `#1d4ed8`。不要抄 YC 橙 `#ec6812`。
    - 技术图：代码、表格、架构图作为编辑型 figure 留下，细边框、无徽章。匹配不上的 DIAGRAM 占位直接省略。
    - 页脚写入 Git 短 SHA，便于 Vercel 页面追踪。

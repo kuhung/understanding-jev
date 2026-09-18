@@ -282,16 +282,20 @@ def render_icon_toc() -> str:
 """
 
 
+CHAPTER_NUM = {ch_id: f"{i:02d}" for i, ch_id in enumerate(ICON_CHAPTERS, 1)}
+
+
 def render_banner(ch_id: str) -> str:
     zh, en = CHAPTER_TITLES[ch_id]
     align = BANNER_ALIGN[ch_id]
     bg = BANNER_BG[ch_id]
     art = BANNERS[ch_id]
+    num = CHAPTER_NUM[ch_id]
     return f"""
 <div class="chapter-banner align-{align}" style="background-color:{bg}" id="{ch_id}-banner">
   <div class="banner-inner">
-    <h2 class="banner-title lang-zh">{zh}</h2>
-    <h2 class="banner-title lang-en" style="display:none">{en}</h2>
+    <h2 class="banner-title lang-zh"><span class="banner-kicker">{num}</span><strong>{zh}</strong></h2>
+    <h2 class="banner-title lang-en" style="display:none"><span class="banner-kicker">{num}</span><strong>{en}</strong></h2>
     <div class="banner-art">{art}</div>
   </div>
 </div>

@@ -1,7 +1,7 @@
 """
 Build script: compile bilingual Markdown drafts into a single-page
 editorial playbook. Layout follows Startup Playbook: centered masthead,
-icon chapter map, full-bleed chapter banners, 700px reading column.
+icon chapter map, centered 1200px chapter banners, 700px reading column.
 
 Run: uv run --with markdown --with pygments python3 scripts/build_site.py
 """
@@ -336,29 +336,16 @@ body {
   top: 0;
   right: 0;
   z-index: 20;
+  line-height: 0;
   color: #fff;
   border: 0;
 }
 .github-corner svg {
   display: block;
-  width: 72px;
-  height: 72px;
-  fill: var(--ink);
-}
-.github-corner .octo-arm,
-.github-corner .octo-body {
-  fill: #fff;
-}
-.github-corner:hover .octo-arm {
-  animation: octocat-wave 560ms ease-in-out;
-}
-@keyframes octocat-wave {
-  0%, 100% { transform: rotate(0); }
-  20%, 60% { transform: rotate(-25deg); }
-  40%, 80% { transform: rotate(10deg); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .github-corner:hover .octo-arm { animation: none; }
+  width: 80px;
+  height: 80px;
+  border: 0;
+  overflow: hidden;
 }
 
 a:focus-visible,
@@ -416,7 +403,18 @@ button:focus-visible {
   color: var(--body);
   margin: 0 0 20px;
 }
-.container-content a { color: var(--link); }
+.container-content a {
+  color: var(--link);
+  text-decoration: none;
+  box-shadow: inset 0 -1px 0 var(--link);
+  text-shadow: 1px 1px 0 #fff, -1px 1px 0 #fff;
+}
+.container-content a:hover { color: #1e40af; }
+.container-content pre a,
+.container-content code {
+  box-shadow: none;
+  text-shadow: none;
+}
 .container-content h3 {
   font-family: var(--display);
   font-size: 30px;
@@ -491,36 +489,51 @@ button:focus-visible {
 .chapter { scroll-margin-top: 24px; }
 .chapter-banner {
   height: 300px;
+  max-width: 1200px;
   width: 100%;
-  margin: 80px 0 0;
+  margin: 80px auto;
   overflow: hidden;
   color: var(--art);
   position: relative;
 }
 .banner-inner {
-  width: min(1200px, 100%);
-  margin: 0 auto;
+  width: 100%;
   height: 300px;
   position: relative;
 }
 .banner-title {
   position: absolute;
-  top: 52px;
+  top: 44px;
   z-index: 2;
   width: 700px;
   max-width: calc(100% - 48px);
   left: 50%;
   margin: 0 0 0 -350px;
   font-family: var(--display);
-  font-size: 42px;
   font-weight: 400;
+  color: var(--art);
+}
+.banner-kicker {
+  display: block;
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  color: #fff;
+  margin: 0 0 6px;
+}
+.banner-title strong {
+  display: inline-block;
+  font-weight: 400;
+  font-size: 56px;
   letter-spacing: 0.04em;
-  line-height: 1.15;
-  color: var(--ink);
+  line-height: 1.1;
+  color: var(--art);
+  border-top: 3px solid #fff;
+  padding-top: 10px;
   text-wrap: balance;
 }
-.align-left .banner-title { text-align: left; padding-right: 240px; }
-.align-right .banner-title { text-align: right; padding-left: 240px; }
+.align-left .banner-title { text-align: left; padding-right: 220px; }
+.align-right .banner-title { text-align: right; padding-left: 220px; }
 .banner-art {
   position: absolute;
   top: 8px;
@@ -532,8 +545,51 @@ button:focus-visible {
 .align-right .banner-art { left: 0; }
 .banner-art svg { width: 100%; height: 100%; }
 
-.chapter-body { padding-top: 36px; }
+.back-toc {
+  height: 0;
+  max-width: 1200px;
+  margin: 0 auto;
+  text-align: right;
+}
+.back-toc a {
+  position: relative;
+  top: -28px;
+  color: #888;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 4px 8px 8px;
+}
+.back-toc a:hover { color: var(--link); }
+.back-toc-arrow {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 7px;
+  border-left: 1.5px solid #ccc;
+  border-top: 1.5px solid #ccc;
+  transform: rotate(45deg);
+  vertical-align: 2px;
+}
+.back-toc a:hover .back-toc-arrow { border-color: var(--link); }
+
+.chapter-body { padding-top: 0; }
 .hero-section { padding-top: 0; }
+
+.bottom-toc {
+  display: block;
+  width: 700px;
+  max-width: calc(100% - 60px);
+  margin: 56px auto 0;
+  text-align: center;
+  color: #888;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+.bottom-toc:hover { color: var(--link); }
+.bottom-toc .back-toc-arrow { margin-right: 8px; }
+.bottom-toc:hover .back-toc-arrow { border-color: var(--link); }
 
 .figure {
   margin: 28px 0;
@@ -667,12 +723,12 @@ button:focus-visible {
 
 @media (max-width: 760px) {
   .masthead h1 { font-size: 28px; padding-bottom: 14px; }
-  .github-corner svg { width: 56px; height: 56px; }
+  .github-corner svg { width: 64px; height: 64px; }
   .byline { margin-bottom: 40px; }
   .chapter-banner {
     height: auto;
     min-height: 280px;
-    margin-top: 48px;
+    margin: 48px auto 32px;
   }
   .banner-inner {
     height: auto;
@@ -687,13 +743,19 @@ button:focus-visible {
     margin: 0 auto 8px;
     padding: 0 20px !important;
     text-align: center !important;
-    font-size: 32px;
   }
+  .banner-title strong { font-size: 32px; }
   .banner-art {
     position: static;
     width: 100%;
     height: 180px;
   }
+  .back-toc {
+    height: auto;
+    text-align: center;
+    margin: -12px auto 24px;
+  }
+  .back-toc a { top: 0; }
   .figure-grid.two, .figure-grid.three { grid-template-columns: 1fr; }
   .container-content h3 { font-size: 26px; }
 }
@@ -704,6 +766,14 @@ button:focus-visible {
   .toc-item:hover .icon,
   .toc-item:focus-visible .icon { transform: none; }
 }
+"""
+
+
+BACK_TOC = """
+<div class="back-toc">
+  <a class="lang-zh" href="#toc"><span class="back-toc-arrow" aria-hidden="true"></span>回到目录</a>
+  <a class="lang-en" href="#toc" style="display:none"><span class="back-toc-arrow" aria-hidden="true"></span>Table of Contents</a>
+</div>
 """
 
 
@@ -742,6 +812,7 @@ def build() -> None:
             f"""
 <section id="{ch_id}" class="chapter">
 {banner}
+{BACK_TOC}
 <div class="chapter-body container-content">
   <div class="lang-zh">{zh_html}</div>
   <div class="lang-en" style="display:none">{en_html}</div>
@@ -770,10 +841,11 @@ def build() -> None:
 <a class="skip-link lang-zh" href="#ch00-hero">跳到正文</a>
 <a class="skip-link lang-en" href="#ch00-hero" style="display:none">Skip to content</a>
 <a class="github-corner" href="https://github.com/kuhung/understanding-jev" target="_blank" rel="noopener" aria-label="GitHub">
-  <svg viewBox="0 0 250 250" aria-hidden="true">
-    <path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path>
-    <path class="octo-arm" d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.1,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.8,103.2" style="transform-origin:130px 106px"></path>
-    <path class="octo-body" d="M115.0,115.0 C114.8,115.1 116.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.6 C160.3,47.7 163.7,45.9 167.5,47.6 C171.4,49.3 172.9,52.3 172.2,56.2 C174.4,55.1 176.9,55.6 178.7,58.0 C181.8,61.6 183.8,73.8 183.8,73.8 C183.8,73.8 193.2,78.4 192.6,84.2 C191.9,90.0 190.2,82.8 185.4,83.0 C177.6,83.4 176.6,87.6 170.7,93.1 C166.9,96.8 156.7,102.6 147.3,108.6 L147.3,112.6 C147.3,114.1 147.9,116.6 150.6,118.2 C155.4,120.7 164.1,121.6 166.0,120.2 C168.0,118.7 170.2,115.3 169.5,107.5"></path>
+  <svg width="80" height="80" viewBox="0 0 80 80" aria-hidden="true">
+    <path fill="#1a1a1a" d="M0 0 L80 80 L80 0 Z"></path>
+    <g transform="translate(44 6) scale(1.75)" fill="#fff">
+      <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.87-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"></path>
+    </g>
   </svg>
 </a>
 
@@ -808,6 +880,9 @@ def build() -> None:
 {icon_toc}
 
 {chapters_html}
+
+<a class="bottom-toc lang-zh" href="#toc"><span class="back-toc-arrow" aria-hidden="true"></span>回到目录</a>
+<a class="bottom-toc lang-en" href="#toc" style="display:none"><span class="back-toc-arrow" aria-hidden="true"></span>Back to Table of Contents</a>
 
 <footer class="site-footer">
   <p>
