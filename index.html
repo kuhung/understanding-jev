@@ -2566,7 +2566,7 @@ button:focus-visible {
 <footer class="site-footer">
   <p>
     <a href="https://github.com/kuhung/understanding-jev" target="_blank" rel="noopener">GitHub</a>
-    · git: dc32c6c
+    · git: dd8b32e
   </p>
 </footer>
 
@@ -2882,6 +2882,8 @@ function applyOpenRouterClock(prefix, or, feltMs, streamed) {
   }
   var totalMs = or && or.total_ms != null ? Math.round(or.total_ms) : null;
   var routingMs = or && or.routing_ms != null ? Math.round(or.routing_ms) : null;
+  var providerMs = or && or.provider_ms != null ? Math.round(or.provider_ms) : null;
+  var generationMs = or && or.generation_ms != null ? Math.round(or.generation_ms) : null;
   var timerEl = document.getElementById(prefix + '-timer');
   var metaZh = document.getElementById(prefix + '-meta-zh');
   var metaEn = document.getElementById(prefix + '-meta-en');
@@ -2905,8 +2907,20 @@ function applyOpenRouterClock(prefix, or, feltMs, streamed) {
     metaCoreZh.push('Total ' + totalMs + 'ms');
     metaCoreEn.push('Total ' + totalMs + 'ms');
   }
-  if (metaZh) metaZh.textContent = metaCoreZh.length ? metaCoreZh.join(' · ') : (computeMs != null ? '' : 'OpenRouter 时间未返回');
-  if (metaEn) metaEn.textContent = metaCoreEn.length ? metaCoreEn.join(' · ') : (computeMs != null ? '' : 'OpenRouter timing unavailable');
+  if (!metaCoreZh.length) {
+    if (streamed && providerMs != null) {
+      metaCoreZh.push('首字 ' + providerMs + 'ms');
+      metaCoreEn.push('Provider ' + providerMs + 'ms');
+    } else if (providerMs != null) {
+      metaCoreZh.push('Provider ' + providerMs + 'ms');
+      metaCoreEn.push('Provider ' + providerMs + 'ms');
+    } else if (generationMs != null) {
+      metaCoreZh.push('生成 ' + generationMs + 'ms');
+      metaCoreEn.push('Generation ' + generationMs + 'ms');
+    }
+  }
+  if (metaZh) metaZh.textContent = metaCoreZh.length ? metaCoreZh.join(' · ') : 'OpenRouter 时间未返回';
+  if (metaEn) metaEn.textContent = metaCoreEn.length ? metaCoreEn.join(' · ') : 'OpenRouter timing unavailable';
   setFelt(prefix, feltMs);
 
   return {
