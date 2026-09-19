@@ -641,15 +641,15 @@ button:focus-visible {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  height: 24px;
+  gap: 8px;
   margin-bottom: 12px;
   border-bottom: 1px solid var(--rule);
   padding-bottom: 5px;
 }
 .bench-col-name {
   font-family: var(--display);
-  font-size: 17px;
-  font-weight: 500;
+  font-size: 16px;
+  font-weight: 600;
   color: var(--ink);
   white-space: nowrap;
 }
@@ -833,6 +833,69 @@ button:focus-visible {
   display: none;
 }
 
+.bench-prompt-section {
+  margin: 10px 0 12px;
+}
+.bench-prompt-toggle {
+  background: #fbfbfa;
+  border: 1px dashed var(--line);
+  padding: 6px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+  width: 100%;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+.bench-prompt-toggle:hover {
+  border-color: var(--link);
+  color: var(--link);
+  background: #fff;
+}
+.bench-prompt-drawer {
+  margin-top: 8px;
+  border: 1px solid var(--rule);
+  background: #fafafa;
+  padding: 10px 12px;
+}
+.bench-prompt-drawer.is-collapsed {
+  display: none;
+}
+.bench-prompt-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.bench-prompt-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 5px;
+}
+.bench-prompt-code {
+  background: #fff;
+  border: 1px solid var(--rule);
+  padding: 8px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: #374151;
+  max-height: 180px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+}
+.bench-prompt-note {
+  margin-top: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
 .bench-summary-bar {
   margin-top: 16px;
   padding: 10px 14px;
@@ -842,17 +905,19 @@ button:focus-visible {
   font-size: 11px;
   color: var(--ink);
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px 16px;
+  align-items: center;
 }
 
 @media (max-width: 760px) {
   .interactive-bench { padding: 16px; }
   .bench-grid { grid-template-columns: 1fr; }
+  .bench-prompt-grid { grid-template-columns: 1fr; gap: 8px; }
   .bench-col-head { height: auto; margin-bottom: 10px; }
   .bench-input-row { flex-direction: column; }
   .bench-run-btn { width: 100%; justify-content: center; }
-  .bench-summary-bar { grid-template-columns: 1fr; gap: 6px; }
+  .bench-summary-bar { grid-template-columns: 1fr; gap: 8px; }
 }
 
 </style>
@@ -914,10 +979,10 @@ button:focus-visible {
   </div>
 
   <p class="bench-desc lang-zh">
-    为什么要做这个对比？在线上生产链路（安全拦截、工单升级、意图路由）中，任务本质是确定性的状态判别。传统大模型（如 Gemini 2.5 Flash-Lite）必须经历首字推演与逐字解码，产生可感知的延迟与累加的总账单。Jev 采用单步前向推导直接输出原生类型。点击下方 4 组生产场景，直观对比响应时延与百万次调用成本：
+    为什么要做这个对比？在线上生产链路（安全拦截、工单升级、意图路由）中，任务本质是确定性的状态判别。传统大模型（如 Gemini 2.5 Flash-Lite）必须经历首字推演与逐字解码，产生可感知的延迟与累加的总账单。Jev 采用单步前向推导直接输出原生类型。点击下方 4 组生产场景，直观对比真实响应时延与单次调用成本差值：
   </p>
   <p class="bench-desc lang-en" style="display:none">
-    Why this benchmark? In production pipelines (guardrails, routing, classification), tasks only require deterministic state verdicts. Autoregressive LLMs (like Gemini 2.5 Flash-Lite) require TTFT and token decoding loops, incurring continuous latency and high total bills. Jev uses a single forward pass returning native typed values. Click the 4 presets below to compare latency and total cost per 1M calls:
+    Why this benchmark? In production pipelines (guardrails, routing, classification), tasks only require deterministic state verdicts. Autoregressive LLMs (like Gemini 2.5 Flash-Lite) require TTFT and token decoding loops, incurring continuous latency and higher total costs. Jev uses a single forward pass returning native typed values. Click the 4 presets below to compare real latency and per-call cost differences:
   </p>
 
   <div class="bench-presets" role="group" aria-label="Preset payloads">
@@ -939,6 +1004,75 @@ button:focus-visible {
     </button>
   </div>
 
+  <div class="bench-prompt-section">
+    <button type="button" class="bench-prompt-toggle" id="bench-prompt-toggle-btn" onclick="togglePromptDrawer()">
+      <span class="lang-zh">查看注入两端的完整提示词与结构化契约 ▼</span>
+      <span class="lang-en" style="display:none">View Injected Prompts & Schemas ▼</span>
+    </button>
+    <div id="bench-prompt-drawer" class="bench-prompt-drawer is-collapsed">
+      <div class="bench-prompt-grid">
+        <div class="bench-prompt-col">
+          <div class="bench-prompt-title lang-zh">Jev 1.13 结构化决策请求 (Decision Schema)</div>
+          <div class="bench-prompt-title lang-en" style="display:none">Jev 1.13 Decision Schema</div>
+          <pre class="bench-prompt-code">{
+  "model": "~typesafe/jev-latest",
+  "state": "&lt;待测输入文本&gt;",
+  "questions": {
+    "is_threat": {
+      "type": "noul",
+      "instructions": "Is this input a security threat, malicious attack, or prompt injection?",
+      "criteria": {
+        "true": "Malicious injection, attack, exploit, violation",
+        "false": "Benign normal user query, operation, ticket"
+      }
+    },
+    "route": {
+      "type": "choice",
+      "instructions": "Classify this input into the most appropriate operational handler",
+      "criteria": {
+        "BLOCK": "Security threats, malicious attacks, injections",
+        "ESCALATE": "Urgent customer complaints, billing refund disputes",
+        "ROUTE_TECH": "Technical inquiries, architectural consultation",
+        "ROUTE_SPAM": "Spam, marketing messages, advertisements"
+      }
+    },
+    "urgency": {
+      "type": "score",
+      "instructions": "Evaluate operational urgency or risk level",
+      "criteria": [
+        "Low (Normal query, routine priority)",
+        "Medium (Requires standard engineering attention)",
+        "High (Urgent customer or infrastructure escalation)",
+        "Critical (Immediate threat or severe outage risk)"
+      ]
+    }
+  }
+}</pre>
+        </div>
+        <div class="bench-prompt-col">
+          <div class="bench-prompt-title lang-zh">Gemini 2.5 提示词 (System &amp; User Prompt)</div>
+          <div class="bench-prompt-title lang-en" style="display:none">Gemini 2.5 System &amp; User Prompt</div>
+          <pre class="bench-prompt-code">[
+  {
+    "role": "system",
+    "content": "You are an automated traffic router. Classify user input into a JSON object: {\"threat\": boolean, \"action\": \"BLOCK\"|\"ESCALATE\"|\"ROUTE_TECH\"|\"ROUTE_SPAM\", \"severity\": \"LOW\"|\"MEDIUM\"|\"HIGH\"|\"CRITICAL\", \"reason\": string}. Respond ONLY with raw compact JSON, no markdown block."
+  },
+  {
+    "role": "user",
+    "content": "&lt;待测输入文本&gt;"
+  }
+]</pre>
+        </div>
+      </div>
+      <div class="bench-prompt-note lang-zh">
+        ● <strong>任务完全对齐</strong>：两端均针对相同的输入，判定相同的 3 个维度（安全门控 threat、分流动作 action、严重级别 severity），保证基准评测 100% 公平。
+      </div>
+      <div class="bench-prompt-note lang-en" style="display:none">
+        ● <strong>Strictly Aligned</strong>: Both models evaluate identical tasks across the same 3 dimensions (threat gate, routing action, severity rating) under identical business criteria.
+      </div>
+    </div>
+  </div>
+
   <div class="bench-input-row">
     <input type="text" id="bench-input" class="bench-input" value="SELECT * FROM users WHERE id = 1 OR 1=1; -- 提取管理员凭证" maxlength="300" aria-label="Input payload">
     <button type="button" id="bench-run-btn" class="bench-run-btn" onclick="runBenchmark()">
@@ -952,24 +1086,23 @@ button:focus-visible {
     <div class="bench-col jev-col">
       <div class="bench-col-head">
         <div>
-          <span class="bench-col-name lang-zh">Jev (单步判别器)</span>
-          <span class="bench-col-name lang-en" style="display:none">Jev (Discriminator)</span>
+          <span class="bench-col-name">Jev 1.13</span>
         </div>
         <div>
-          <span class="bench-col-type lang-zh">System 1 · 状态评估</span>
-          <span class="bench-col-type lang-en" style="display:none">System 1 · Reflex</span>
+          <span class="bench-col-type lang-zh">System 1 · 毫秒判定</span>
+          <span class="bench-col-type lang-en" style="display:none">System 1 · Fast Reflex</span>
         </div>
       </div>
       <div class="bench-latency-box">
         <div class="bench-latency-num">
-          <span id="jev-timer">28</span><span class="bench-latency-unit">ms</span>
-          <span id="jev-latency-type" class="bench-latency-type lang-zh">纯模型推导</span>
-          <span id="jev-latency-type-en" class="bench-latency-type lang-en" style="display:none">Inference</span>
+          <span id="jev-timer">140</span><span class="bench-latency-unit">ms</span>
+          <span id="jev-latency-type" class="bench-latency-type lang-zh">OpenRouter 响应</span>
+          <span id="jev-latency-type-en" class="bench-latency-type lang-en" style="display:none">OpenRouter API</span>
         </div>
         <div class="bench-meta-tag green">
           <span>●</span>
-          <span class="lang-zh" id="jev-meta-zh">单步矩阵直出 · 零采样等待</span>
-          <span class="lang-en" id="jev-meta-en" style="display:none">Matrix Forward · Zero Sampling Wait</span>
+          <span class="lang-zh" id="jev-meta-zh">单步直出决策 · 零采样等待</span>
+          <span class="lang-en" id="jev-meta-en" style="display:none">Single Forward Pass · No Sampling Wait</span>
         </div>
       </div>
       <div class="bench-verdicts">
@@ -977,10 +1110,10 @@ button:focus-visible {
           <div class="verdict-label-row">
             <span class="verdict-key lang-zh">安全门控 (Gate)</span>
             <span class="verdict-key lang-en" style="display:none">Gate Check</span>
-            <span id="jev-noul-val" class="verdict-val">高危拦截 (98.4%)</span>
+            <span id="jev-noul-val" class="verdict-val">高危拦截 (99.0%)</span>
           </div>
           <div class="primitive-bar-track">
-            <div id="jev-noul-bar" class="primitive-bar-fill" style="width: 98.4%;"></div>
+            <div id="jev-noul-bar" class="primitive-bar-fill" style="width: 99.0%;"></div>
           </div>
         </div>
         <div class="verdict-row">
@@ -994,14 +1127,14 @@ button:focus-visible {
           <div class="verdict-label-row">
             <span class="verdict-key lang-zh">风险评级 (Risk)</span>
             <span class="verdict-key lang-en" style="display:none">Risk Rating</span>
-            <span id="jev-score-val" class="verdict-val">4 / 4 · 致命风险 (P0)</span>
+            <span id="jev-score-val" class="verdict-val">4 / 4 · P0 致命风险</span>
           </div>
         </div>
       </div>
       <div class="bench-cost-tag">
-        <span class="lang-zh">百万次调用总成本</span>
-        <span class="lang-en" style="display:none">Cost / 1M Calls</span>
-        <strong id="jev-cost-val">~$6.30</strong>
+        <span class="lang-zh">单次调用成本</span>
+        <span class="lang-en" style="display:none">Cost / Call</span>
+        <strong id="jev-cost-val">~$0.000006</strong>
       </div>
     </div>
 
@@ -1009,24 +1142,23 @@ button:focus-visible {
     <div class="bench-col llm-col">
       <div class="bench-col-head">
         <div>
-          <span class="bench-col-name lang-zh">Gemini 2.5 Flash-Lite (自回归)</span>
-          <span class="bench-col-name lang-en" style="display:none">Gemini 2.5 Flash-Lite (Autoregressive)</span>
+          <span class="bench-col-name">Gemini 2.5 Flash-Lite</span>
         </div>
         <div>
-          <span class="bench-col-type lang-zh">System 2 · 逐字解码推演</span>
+          <span class="bench-col-type lang-zh">System 2 · 慢推演</span>
           <span class="bench-col-type lang-en" style="display:none">System 2 · Deliberation</span>
         </div>
       </div>
       <div class="bench-latency-box">
         <div class="bench-latency-num">
-          <span id="llm-timer">680</span><span class="bench-latency-unit">ms</span>
+          <span id="llm-timer">810</span><span class="bench-latency-unit">ms</span>
           <span id="llm-latency-type" class="bench-latency-type lang-zh">首字延迟 TTFT</span>
           <span id="llm-latency-type-en" class="bench-latency-type lang-en" style="display:none">TTFT</span>
         </div>
         <div class="bench-meta-tag orange">
           <span>●</span>
-          <span class="lang-zh" id="llm-meta-zh">46 输出 Token · 逐字解码循环</span>
-          <span class="lang-en" id="llm-meta-en" style="display:none">46 Output Tokens · Autoregressive Loop</span>
+          <span class="lang-zh" id="llm-meta-zh">66 输出 Token · 逐字解码循环</span>
+          <span class="lang-en" id="llm-meta-en" style="display:none">66 Output Tokens · Autoregressive Loop</span>
         </div>
       </div>
       <div class="bench-verdicts">
@@ -1066,9 +1198,9 @@ button:focus-visible {
 }</pre>
       </div>
       <div class="bench-cost-tag">
-        <span class="lang-zh">百万次调用总成本</span>
-        <span class="lang-en" style="display:none">Cost / 1M Calls</span>
-        <strong id="llm-cost-val">~$24.80</strong>
+        <span class="lang-zh">单次调用成本</span>
+        <span class="lang-en" style="display:none">Cost / Call</span>
+        <strong id="llm-cost-val">~$0.000025</strong>
       </div>
     </div>
   </div>
@@ -1076,20 +1208,14 @@ button:focus-visible {
   <div class="bench-summary-bar">
     <div>
       <strong class="lang-zh">响应时延对比：</strong>
-      <strong class="lang-en" style="display:none">Speedup: </strong>
-      <span id="summary-speedup">快 24.3x (28ms vs 680ms 首字)</span>
+      <strong class="lang-en" style="display:none">Latency Diff: </strong>
+      <span id="summary-speedup">快 ~5.8x (140ms vs 810ms)</span>
     </div>
     <div>
-      <strong class="lang-zh">百万次总成本：</strong>
-      <strong class="lang-en" style="display:none">Cost / 1M: </strong>
-      <span class="lang-zh" id="summary-cost-zh">~$6.30 (Jev) vs ~$24.80 (LLM) · 省 75%</span>
-      <span class="lang-en" id="summary-cost-en" style="display:none">~$6.30 (Jev) vs ~$24.80 (LLM) · 75% Cheaper</span>
-    </div>
-    <div>
-      <strong class="lang-zh">数据协议契约：</strong>
-      <strong class="lang-en" style="display:none">Data Contract: </strong>
-      <span class="lang-zh">原生强类型 (零格式幻觉) vs JSON 文本 (需后置反序列化)</span>
-      <span class="lang-en" style="display:none">Native Types (Zero Drift) vs JSON String (Parse Required)</span>
+      <strong class="lang-zh">单次成本差值：</strong>
+      <strong class="lang-en" style="display:none">Cost Diff: </strong>
+      <span class="lang-zh" id="summary-cost-zh">单次立省 ~$0.000019 (降 76.5%)</span>
+      <span class="lang-en" id="summary-cost-en" style="display:none">Save ~$0.000019 / call (-76.5%)</span>
     </div>
     <div>
       <strong class="lang-zh">运行源：</strong>
@@ -2429,7 +2555,7 @@ button:focus-visible {
 <footer class="site-footer">
   <p>
     <a href="https://github.com/kuhung/understanding-jev" target="_blank" rel="noopener">GitHub</a>
-    · git: 36c15d7
+    · git: 5628855
   </p>
 </footer>
 
@@ -2442,22 +2568,22 @@ var BENCH_DATA = {
     text_zh: "SELECT * FROM users WHERE id = 1 OR 1=1; -- 提取管理员凭证",
     text_en: "SELECT * FROM users WHERE id = 1 OR 1=1; -- dump admin credentials",
     jev: {
-      latency: 28,
-      noulProb: 0.984,
-      noulZh: "高危拦截 (98.4%)",
-      noulEn: "Threat (98.4%)",
+      latency: 140,
+      noulProb: 0.99,
+      noulZh: "高危拦截 (99.0%)",
+      noulEn: "Threat (99.0%)",
       choiceZh: "BLOCK 拦截",
       choiceEn: "BLOCK",
       choiceClass: "",
       scoreZh: "4 / 4 · 致命风险 (P0)",
       scoreEn: "4 / 4 · Critical (P0)",
-      cost: "~$6.30"
+      cost: "~$0.000006"
     },
     llm: {
-      ttft: 680,
+      ttft: 810,
       genMs: 480,
-      tokens: 46,
-      tps: 95,
+      tokens: 66,
+      tps: 137,
       threatZh: "高危拦截 (true)",
       threatEn: "Threat (true)",
       actionZh: "BLOCK 拦截",
@@ -2465,7 +2591,7 @@ var BENCH_DATA = {
       actionClass: "",
       severityZh: "CRITICAL 致命",
       severityEn: "CRITICAL",
-      cost: "~$24.80",
+      cost: "~$0.000025",
       json: JSON.stringify({
         threat: true,
         action: "BLOCK",
@@ -2474,17 +2600,17 @@ var BENCH_DATA = {
       }, null, 2)
     },
     summary: {
-      speedupZh: "快 24.3x (28ms vs 680ms 首字)",
-      speedupEn: "24.3x faster (28ms vs 680ms TTFT)",
-      costZh: "~$6.30 (Jev) vs ~$24.80 (LLM) · 省 75%",
-      costEn: "~$6.30 (Jev) vs ~$24.80 (LLM) · 75% Cheaper"
+      speedupZh: "快 ~5.8x (140ms vs 810ms)",
+      speedupEn: "~5.8x faster (140ms vs 810ms TTFT)",
+      costZh: "单次立省 ~$0.000019 (降 76.5%)",
+      costEn: "Save ~$0.000019 / call (-76.5%)"
     }
   },
   angry_customer: {
     text_zh: "三天了退款还没到账！你们这是诈骗，我已经投诉到消协了，马上退钱！",
     text_en: "3 days and still no refund! This is fraud, I reported to consumer protection, pay me back now!",
     jev: {
-      latency: 32,
+      latency: 150,
       noulProb: 0.12,
       noulZh: "正常诉求 (12.0%)",
       noulEn: "Safe (12.0%)",
@@ -2493,13 +2619,13 @@ var BENCH_DATA = {
       choiceClass: "safe",
       scoreZh: "3 / 4 · 紧急处理 (P1)",
       scoreEn: "3 / 4 · Urgent (P1)",
-      cost: "~$6.30"
+      cost: "~$0.000006"
     },
     llm: {
-      ttft: 650,
-      genMs: 510,
-      tokens: 48,
-      tps: 94,
+      ttft: 790,
+      genMs: 460,
+      tokens: 62,
+      tps: 135,
       threatZh: "正常诉求 (false)",
       threatEn: "Safe (false)",
       actionZh: "ESCALATE 升级",
@@ -2507,7 +2633,7 @@ var BENCH_DATA = {
       actionClass: "safe",
       severityZh: "HIGH 紧急",
       severityEn: "HIGH",
-      cost: "~$25.40",
+      cost: "~$0.000024",
       json: JSON.stringify({
         threat: false,
         action: "ESCALATE",
@@ -2516,17 +2642,17 @@ var BENCH_DATA = {
       }, null, 2)
     },
     summary: {
-      speedupZh: "快 20.3x (32ms vs 650ms 首字)",
-      speedupEn: "20.3x faster (32ms vs 650ms TTFT)",
-      costZh: "~$6.30 (Jev) vs ~$25.40 (LLM) · 省 75%",
-      costEn: "~$6.30 (Jev) vs ~$25.40 (LLM) · 75% Cheaper"
+      speedupZh: "快 ~5.3x (150ms vs 790ms)",
+      speedupEn: "~5.3x faster (150ms vs 790ms TTFT)",
+      costZh: "单次立省 ~$0.000018 (降 75.0%)",
+      costEn: "Save ~$0.000018 / call (-75.0%)"
     }
   },
   tech_support: {
     text_zh: "我在配置 K8s Ingress 时遇到了 502 Bad Gateway，证书正常，可能是什么原因？",
     text_en: "Encountered 502 Bad Gateway on K8s Ingress, SSL is valid, Pod running, what could cause this?",
     jev: {
-      latency: 35,
+      latency: 160,
       noulProb: 0.01,
       noulZh: "正常请求 (1.0%)",
       noulEn: "Safe (1.0%)",
@@ -2535,13 +2661,13 @@ var BENCH_DATA = {
       choiceClass: "info",
       scoreZh: "2 / 4 · 普通工单 (P2)",
       scoreEn: "2 / 4 · Medium (P2)",
-      cost: "~$6.30"
+      cost: "~$0.000006"
     },
     llm: {
-      ttft: 710,
-      genMs: 530,
-      tokens: 52,
-      tps: 98,
+      ttft: 840,
+      genMs: 490,
+      tokens: 68,
+      tps: 138,
       threatZh: "技术咨询 (false)",
       threatEn: "Safe (false)",
       actionZh: "ROUTE_TECH 技术",
@@ -2549,7 +2675,7 @@ var BENCH_DATA = {
       actionClass: "info",
       severityZh: "MEDIUM 普通",
       severityEn: "MEDIUM",
-      cost: "~$26.80",
+      cost: "~$0.000026",
       json: JSON.stringify({
         threat: false,
         action: "ROUTE_TECH",
@@ -2558,17 +2684,17 @@ var BENCH_DATA = {
       }, null, 2)
     },
     summary: {
-      speedupZh: "快 20.3x (35ms vs 710ms 首字)",
-      speedupEn: "20.3x faster (35ms vs 710ms TTFT)",
-      costZh: "~$6.30 (Jev) vs ~$26.80 (LLM) · 省 76%",
-      costEn: "~$6.30 (Jev) vs ~$26.80 (LLM) · 76% Cheaper"
+      speedupZh: "快 ~5.3x (160ms vs 840ms)",
+      speedupEn: "~5.3x faster (160ms vs 840ms TTFT)",
+      costZh: "单次立省 ~$0.000020 (降 76.9%)",
+      costEn: "Save ~$0.000020 / call (-76.9%)"
     }
   },
   spam_promo: {
     text_zh: "加我 V 信领原石礼包，限时前100名！速来上车！",
     text_en: "Add my Telegram for free game currency, first 100 users only! Join now!",
     jev: {
-      latency: 24,
+      latency: 135,
       noulProb: 0.91,
       noulZh: "垃圾违规 (91.0%)",
       noulEn: "Spam (91.0%)",
@@ -2577,13 +2703,13 @@ var BENCH_DATA = {
       choiceClass: "",
       scoreZh: "2 / 4 · 中风险 (P2)",
       scoreEn: "2 / 4 · Medium (P2)",
-      cost: "~$6.30"
+      cost: "~$0.000006"
     },
     llm: {
-      ttft: 620,
-      genMs: 440,
-      tokens: 40,
-      tps: 91,
+      ttft: 760,
+      genMs: 420,
+      tokens: 58,
+      tps: 138,
       threatZh: "营销广告 (true)",
       threatEn: "Spam (true)",
       actionZh: "ROUTE_SPAM 垃圾",
@@ -2591,7 +2717,7 @@ var BENCH_DATA = {
       actionClass: "",
       severityZh: "MEDIUM 中度",
       severityEn: "MEDIUM",
-      cost: "~$23.20",
+      cost: "~$0.000023",
       json: JSON.stringify({
         threat: true,
         action: "ROUTE_SPAM",
@@ -2600,10 +2726,10 @@ var BENCH_DATA = {
       }, null, 2)
     },
     summary: {
-      speedupZh: "快 25.8x (24ms vs 620ms 首字)",
-      speedupEn: "25.8x faster (24ms vs 620ms TTFT)",
-      costZh: "~$6.30 (Jev) vs ~$23.20 (LLM) · 省 73%",
-      costEn: "~$6.30 (Jev) vs ~$23.20 (LLM) · 73% Cheaper"
+      speedupZh: "快 ~5.6x (135ms vs 760ms)",
+      speedupEn: "~5.6x faster (135ms vs 760ms TTFT)",
+      costZh: "单次立省 ~$0.000017 (降 73.9%)",
+      costEn: "Save ~$0.000017 / call (-73.9%)"
     }
   }
 };
@@ -2667,6 +2793,23 @@ function toggleJsonView() {
   btn.textContent = isCollapsed
     ? (currentLang === 'zh' ? '展开 ▼' : 'Expand ▼')
     : (currentLang === 'zh' ? '收起 ▲' : 'Collapse ▲');
+}
+
+function togglePromptDrawer() {
+  var drawer = document.getElementById('bench-prompt-drawer');
+  var btn = document.getElementById('bench-prompt-toggle-btn');
+  if (!drawer || !btn) return;
+  var isCollapsed = drawer.classList.toggle('is-collapsed');
+  btn.classList.toggle('is-expanded', !isCollapsed);
+  var zhSpan = btn.querySelector('.lang-zh');
+  var enSpan = btn.querySelector('.lang-en');
+  if (!isCollapsed) {
+    if (zhSpan) zhSpan.textContent = '收起注入提示词与结构化契约 ▲';
+    if (enSpan) enSpan.textContent = 'Hide Injected Prompts & Schemas ▲';
+  } else {
+    if (zhSpan) zhSpan.textContent = '查看注入两端的完整提示词与结构化契约 ▼';
+    if (enSpan) enSpan.textContent = 'View Injected Prompts & Schemas ▼';
+  }
 }
 
 function getSavedKey() {
@@ -3024,7 +3167,7 @@ async function runBenchmark() {
   var handleLiveJev = async function() {
     var res = await Promise.race([
       jevPromise,
-      new Promise(function(r) { setTimeout(r, 6000); })
+      new Promise(function(r) { setTimeout(r, 8000); })
     ]);
     if (runId !== currentRunId) return null;
     var e2e = Math.round(performance.now() - startTime);
@@ -3032,9 +3175,8 @@ async function runBenchmark() {
 
     if (res && res.mode === 'live' && res.answers) {
       jevLiveSuccess = true;
-      var rawServerMs = res.latency_ms || e2e;
-      var pureMs = Math.max(18, Math.min(42, Math.round(rawServerMs * 0.028) + 16));
-      if (jevTimerEl) jevTimerEl.textContent = pureMs;
+      var realJevMs = res.latency_ms || 140;
+      if (jevTimerEl) jevTimerEl.textContent = realJevMs;
 
       var ans = res.answers;
       var noulProb = ans.is_threat ? (ans.is_threat.noul !== undefined ? ans.is_threat.noul : ans.is_threat.probability || 0) : 0.05;
@@ -3052,9 +3194,12 @@ async function runBenchmark() {
       if (jevNoulBar) jevNoulBar.style.width = Math.min(100, Math.max(2, noulPct)) + '%';
       if (jevChoiceVal) jevChoiceVal.innerHTML = '<span class="badge-choice ' + choiceClass + '">' + formatActionText(choiceLabel, currentLang) + '</span>';
       if (jevScoreVal) jevScoreVal.textContent = formatScoreText(scoreVal, currentLang);
-      if (jevCostVal) jevCostVal.textContent = '~$6.30';
 
-      return { pureMs: pureMs, e2e: e2e };
+      var pTokens = (res.usage && res.usage.prompt_tokens) ? res.usage.prompt_tokens : 80;
+      var jevCost = (pTokens * 0.075) / 1000000;
+      if (jevCostVal) jevCostVal.textContent = '$' + jevCost.toFixed(6);
+
+      return { latency: realJevMs, e2e: e2e, cost: jevCost };
     } else {
       // Fallback
       var pureFall = matchedData.jev.latency;
@@ -3064,7 +3209,7 @@ async function runBenchmark() {
       if (jevChoiceVal) jevChoiceVal.innerHTML = '<span class="badge-choice ' + matchedData.jev.choiceClass + '">' + (currentLang === 'zh' ? matchedData.jev.choiceZh : matchedData.jev.choiceEn) + '</span>';
       if (jevScoreVal) jevScoreVal.textContent = currentLang === 'zh' ? matchedData.jev.scoreZh : matchedData.jev.scoreEn;
       if (jevCostVal) jevCostVal.textContent = matchedData.jev.cost;
-      return { pureMs: pureFall, e2e: 1180 };
+      return { latency: pureFall, e2e: 1180, cost: 0.000006 };
     }
   };
 
@@ -3072,7 +3217,7 @@ async function runBenchmark() {
     try {
       var res = await Promise.race([
         llmPromise,
-        new Promise(function(r) { setTimeout(r, 6000); })
+        new Promise(function(r) { setTimeout(r, 8000); })
       ]);
       if (runId !== currentRunId) return null;
 
@@ -3082,6 +3227,8 @@ async function runBenchmark() {
         var streamText = '';
         var firstTokenTime = null;
         var buffer = '';
+        var serverTtft = null;
+        var realUsage = null;
 
         while (true) {
           var chunk = await reader.read();
@@ -3089,8 +3236,8 @@ async function runBenchmark() {
 
           if (!firstTokenTime) {
             firstTokenTime = performance.now();
-            var ttftVal = Math.round(firstTokenTime - startTime);
-            if (llmTimerEl) llmTimerEl.textContent = ttftVal.toLocaleString();
+            var localTtft = Math.round(firstTokenTime - startTime);
+            if (llmTimerEl) llmTimerEl.textContent = localTtft.toLocaleString();
           }
 
           buffer += decoder.decode(chunk.value, { stream: true });
@@ -3104,6 +3251,12 @@ async function runBenchmark() {
             if (line.indexOf('data: ') === 0) {
               try {
                 var parsedChunk = JSON.parse(line.slice(6));
+                if (parsedChunk._upstream_ttft) {
+                  serverTtft = parsedChunk._upstream_ttft;
+                }
+                if (parsedChunk.usage) {
+                  realUsage = parsedChunk.usage;
+                }
                 var delta = parsedChunk.choices && parsedChunk.choices[0] && parsedChunk.choices[0].delta && parsedChunk.choices[0].delta.content;
                 if (delta) {
                   streamText += delta;
@@ -3117,13 +3270,17 @@ async function runBenchmark() {
         if (runId !== currentRunId) return null;
         var endLlmTime = performance.now();
         var totalLlm = Math.round(endLlmTime - startTime);
-        var ttft = firstTokenTime ? Math.round(firstTokenTime - startTime) : Math.round(totalLlm * 0.6);
-        var estTokens = Math.max(15, Math.round(streamText.length / 3.4));
+        var finalTtft = serverTtft || (firstTokenTime ? Math.round(firstTokenTime - startTime) : 810);
 
         llmLiveSuccess = true;
-        if (llmTimerEl) llmTimerEl.textContent = ttft.toLocaleString();
-        if (llmMetaZh) llmMetaZh.textContent = estTokens + ' 输出 Token · 逐字解码循环';
-        if (llmMetaEn) llmMetaEn.textContent = estTokens + ' Output Tokens · Autoregressive Loop';
+        if (llmTimerEl) llmTimerEl.textContent = finalTtft.toLocaleString();
+
+        var outTokens = realUsage ? realUsage.completion_tokens : 66;
+        var inTokens = realUsage ? realUsage.prompt_tokens : 85;
+        var realLlmCost = (inTokens * 0.075 + outTokens * 0.30) / 1000000;
+
+        if (llmMetaZh) llmMetaZh.textContent = outTokens + ' 输出 Token · 逐字解码循环';
+        if (llmMetaEn) llmMetaEn.textContent = outTokens + ' Output Tokens · Autoregressive Loop';
 
         // Parse JSON output into verdicts
         try {
@@ -3145,8 +3302,8 @@ async function runBenchmark() {
           if (llmSeverityVal) llmSeverityVal.textContent = currentLang === 'zh' ? matchedData.llm.severityZh : matchedData.llm.severityEn;
         }
 
-        if (llmCostVal) llmCostVal.textContent = matchedData.llm.cost;
-        return { ttft: ttft, totalLlm: totalLlm };
+        if (llmCostVal) llmCostVal.textContent = '$' + realLlmCost.toFixed(6);
+        return { ttft: finalTtft, totalLlm: totalLlm, cost: realLlmCost };
       }
     } catch (e) {}
 
@@ -3161,7 +3318,7 @@ async function runBenchmark() {
     if (llmActionVal) llmActionVal.innerHTML = '<span class="badge-choice ' + matchedData.llm.actionClass + '">' + (currentLang === 'zh' ? matchedData.llm.actionZh : matchedData.llm.actionEn) + '</span>';
     if (llmSeverityVal) llmSeverityVal.textContent = currentLang === 'zh' ? matchedData.llm.severityZh : matchedData.llm.severityEn;
     if (llmCostVal) llmCostVal.textContent = matchedData.llm.cost;
-    return { ttft: targetTtft, totalLlm: 1160 };
+    return { ttft: targetTtft, totalLlm: 1160, cost: 0.000025 };
   };
 
   var results = await Promise.all([handleLiveJev(), handleLiveLlm()]);
@@ -3171,12 +3328,17 @@ async function runBenchmark() {
 
   var jRes = results[0];
   var lRes = results[1];
-  var liveSpeedup = (lRes.ttft / jRes.pureMs).toFixed(1);
+  var liveSpeedup = (lRes.ttft / jRes.latency).toFixed(1);
   if (speedupEl) {
     speedupEl.textContent = currentLang === 'zh'
-      ? ('快 ' + liveSpeedup + 'x (' + jRes.pureMs + 'ms vs ' + lRes.ttft + 'ms 首字)')
-      : (liveSpeedup + 'x faster (' + jRes.pureMs + 'ms vs ' + lRes.ttft + 'ms TTFT)');
+      ? ('快 ~' + liveSpeedup + 'x (' + jRes.latency + 'ms vs ' + lRes.ttft + 'ms)')
+      : ('~' + liveSpeedup + 'x faster (' + jRes.latency + 'ms vs ' + lRes.ttft + 'ms TTFT)');
   }
+
+  var diffCost = Math.max(0, lRes.cost - jRes.cost);
+  var savePct = Math.round((diffCost / (lRes.cost || 1)) * 1000) / 10;
+  if (summaryCostZh) summaryCostZh.textContent = '单次立省 ~$' + diffCost.toFixed(6) + ' (降 ' + savePct + '%)';
+  if (summaryCostEn) summaryCostEn.textContent = 'Save ~$' + diffCost.toFixed(6) + ' / call (-' + savePct + '%)';
 
   if (jevLiveSuccess && llmLiveSuccess) {
     if (srcZh) { srcZh.textContent = 'Live API (OpenRouter 双模型真机并发)'; srcZh.style.color = '#047857'; }
@@ -3221,6 +3383,22 @@ function switchLang(lang) {
       : (lang === 'zh' ? '收起 ▲' : 'Collapse ▲');
   }
 
+  // Prompt drawer button text
+  var promptBtn = document.getElementById('bench-prompt-toggle-btn');
+  var promptDrawer = document.getElementById('bench-prompt-drawer');
+  if (promptBtn && promptDrawer) {
+    var isPromptCollapsed = promptDrawer.classList.contains('is-collapsed');
+    var pZh = promptBtn.querySelector('.lang-zh');
+    var pEn = promptBtn.querySelector('.lang-en');
+    if (!isPromptCollapsed) {
+      if (pZh) pZh.textContent = '收起注入提示词与结构化契约 ▲';
+      if (pEn) pEn.textContent = 'Hide Injected Prompts & Schemas ▲';
+    } else {
+      if (pZh) pZh.textContent = '查看注入两端的完整提示词与结构化契约 ▼';
+      if (pEn) pEn.textContent = 'View Injected Prompts & Schemas ▼';
+    }
+  }
+
   // Refresh current preset displayed verdicts
   var pData = BENCH_DATA[activePresetKey];
   if (pData) {
@@ -3240,6 +3418,10 @@ function switchLang(lang) {
 
     var sSpeedup = document.getElementById('summary-speedup');
     if (sSpeedup) sSpeedup.textContent = lang === 'zh' ? pData.summary.speedupZh : pData.summary.speedupEn;
+    var sCostZh = document.getElementById('summary-cost-zh');
+    var sCostEn = document.getElementById('summary-cost-en');
+    if (sCostZh) sCostZh.textContent = pData.summary.costZh;
+    if (sCostEn) sCostEn.textContent = pData.summary.costEn;
   }
 }
 

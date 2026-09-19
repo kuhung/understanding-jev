@@ -85,9 +85,11 @@ export default async function handler(req, res) {
       }
     ],
     temperature: 0.1,
-    stream: true
+    stream: true,
+    stream_options: { include_usage: true }
   };
 
+  const startTime = Date.now();
   try {
     const upstreamRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -113,9 +115,15 @@ export default async function handler(req, res) {
     });
 
     const reader = upstreamRes.body.getReader();
+    let isFirstChunk = true;
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
+      if (isFirstChunk) {
+        isFirstChunk = false;
+        const upstreamTtft = Date.now() - startTime;
+        res.write(`data: ${JSON.stringify({ _upstream_ttft: upstreamTtft })}\n\n`);
+      }
       res.write(value);
     }
     res.end();

@@ -179,12 +179,14 @@ export default async function handler(req, res) {
     }
 
     const data = await upstreamRes.json();
-    console.log(`[Jev Live Call] Latency: ${elapsed}ms | Input: "${state.slice(0, 60)}" | Answers:`, JSON.stringify(data.answers || {}));
+    console.log(`[Jev Live Call] Latency: ${elapsed}ms | Input: "${state.slice(0, 60)}" | Data:`, JSON.stringify(data));
     return res.status(200).json({
       success: true,
       mode: 'live',
       latency_ms: elapsed,
-      answers: data.answers || {}
+      answers: data.answers || {},
+      usage: data.usage || null,
+      id: data.id || null
     });
   } catch (err) {
     console.error('Decisions proxy error:', err);
