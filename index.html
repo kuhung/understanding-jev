@@ -528,6 +528,7 @@ button:focus-visible {
   gap: 6px;
   cursor: pointer;
   line-height: 1.2;
+  transition: border-color 0.15s, color 0.15s;
 }
 .bench-mode-badge:hover {
   border-color: var(--ink);
@@ -537,11 +538,18 @@ button:focus-visible {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #10b981;
+  background: #9ca3af;
   flex-shrink: 0;
+  transition: background-color 0.2s;
+}
+.bench-mode-badge.is-live .dot {
+  background: #10b981;
+}
+.bench-mode-badge.is-replay .dot {
+  background: #9ca3af;
 }
 .bench-mode-badge.is-offline .dot {
-  background: #9ca3af;
+  background: #ef4444;
 }
 .bench-desc {
   font-size: 13.5px;
@@ -847,10 +855,10 @@ button:focus-visible {
   <div class="bench-header">
     <h2 class="bench-title lang-zh">测试体验：单步判别 vs 自回归生成</h2>
     <h2 class="bench-title lang-en" style="display:none">Live Benchmark: Single-Step Discriminator vs Autoregressive LLM</h2>
-    <div id="bench-badge" class="bench-mode-badge" title="Runtime Mode">
+    <div id="bench-badge" class="bench-mode-badge is-replay" title="当前为基准回放模式（访客免Key）。点击配置个人 Key 直连真机">
       <span class="dot"></span>
-      <span class="lang-zh" id="bench-mode-text-zh">探测连接...</span>
-      <span class="lang-en" id="bench-mode-text-en" style="display:none">Probing API...</span>
+      <span class="lang-zh" id="bench-mode-text-zh">基准回放 (访客模式)</span>
+      <span class="lang-en" id="bench-mode-text-en" style="display:none">Trace Replay (Guest)</span>
     </div>
   </div>
 
@@ -2340,7 +2348,7 @@ button:focus-visible {
 <footer class="site-footer">
   <p>
     <a href="https://github.com/kuhung/understanding-jev" target="_blank" rel="noopener">GitHub</a>
-    · git: 719db59
+    · git: 3d1111c
   </p>
 </footer>
 
@@ -2452,8 +2460,12 @@ var BENCH_DATA = {
 };
 
 var activePresetKey = 'sql_injection';
-var isRunning = false;
-var apiAvailable = null;
+// Three tiers:
+// 1. 'replay' (Default Level 1: visitor replay mode, 0 key required, zero network dependency)
+// 2. 'user_key' (Level 2: reader customized OpenRouter Key in localStorage)
+// 3. 'server_key' (Level 3: server global key configured by site owner)
+var currentMode = 'replay';
+var currentRunId = 0;
 
 function getSavedKey() {
   try {
@@ -2463,41 +2475,172 @@ function getSavedKey() {
   }
 }
 
+function maskKey(key) {
+  if (!key || key.length < 8) return '********';
+  return key.slice(0, 7) + '...' + key.slice(-4);
+}
+
+function refreshModeUI() {
+  var badge = document.getElementById('bench-badge');
+  var textZh = document.getElementById('bench-mode-text-zh');
+  var textEn = document.getElementById('bench-mode-text-en');
+  var srcZh = document.getElementById('summary-source-zh');
+  var srcEn = document.getElementById('summary-source-en');
+
+  if (!badge) return;
+
+  badge.classList.remove('is-live');
+  badge.classList.remove('is-replay');
+  badge.classList.remove('is-offline');
+
+  if (currentMode === 'user_key') {
+    badge.classList.add('is-live');
+    if (textZh) textZh.textContent = 'Live API (自定义Key)';
+    if (textEn) textEn.textContent = 'Live API (Custom Key)';
+    badge.title = currentLang === 'zh'
+      ? '已激活个人 OpenRouter Key，双真机并发直连。点击修改或清除'
+      : 'Using personal OpenRouter Key. Click to edit or remove';
+    if (srcZh) srcZh.textContent = 'Live API (个人 Key 直连)';
+    if (srcEn) srcEn.textContent = 'Live API (Personal Key)';
+  } else if (currentMode === 'server_key') {
+    badge.classList.add('is-live');
+    if (textZh) textZh.textContent = 'Live API (全网就绪)';
+    if (textEn) textEn.textContent = 'Live API (Connected)';
+    badge.title = currentLang === 'zh'
+      ? '已连接服务端全局凭据，全网免Key真机直连。点击可配置个人Key'
+      : 'Server credentials active. Click to use your own Key';
+    if (srcZh) srcZh.textContent = 'Live API (服务端全局凭据)';
+    if (srcEn) srcEn.textContent = 'Live API (Server Live)';
+  } else {
+    // Replay mode (Default Level 1)
+    badge.classList.add('is-replay');
+    if (textZh) textZh.textContent = '基准回放 (访客模式)';
+    if (textEn) textEn.textContent = 'Trace Replay (Guest)';
+    badge.title = currentLang === 'zh'
+      ? '当前为真机基准回放模式（访客免Key）。点击配置个人 Key 直连真机'
+      : 'Trace Replay mode (Guest). Click to enter your OpenRouter Key';
+    if (srcZh) srcZh.textContent = '真机基准回放 (Gemini 2.5 Flash-Lite)';
+    if (srcEn) srcEn.textContent = 'Trace Replay (Gemini 2.5 Flash-Lite)';
+  }
+}
+
+function silentProbeServer() {
+  var savedKey = getSavedKey();
+  if (savedKey) {
+    currentMode = 'user_key';
+    refreshModeUI();
+    return;
+  }
+
+  // Silent probe without blocking user or changing UI to "probing"
+  var controller = null;
+  try {
+    controller = new AbortController();
+  } catch (e) {}
+
+  var timeoutId = controller ? setTimeout(function() {
+    try { controller.abort(); } catch (e) {}
+  }, 1800) : null;
+
+  var fetchOpts = {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ probe: true })
+  };
+  if (controller) fetchOpts.signal = controller.signal;
+
+  fetch('/api/decide', fetchOpts)
+    .then(function(res) {
+      if (timeoutId) clearTimeout(timeoutId);
+      return res.ok ? res.json() : null;
+    })
+    .then(function(data) {
+      if (getSavedKey()) return; // User might have entered a key in the meantime
+      if (data && (data.hasServerKey || data.mode === 'live')) {
+        currentMode = 'server_key';
+        refreshModeUI();
+      } else {
+        currentMode = 'replay';
+        refreshModeUI();
+      }
+    })
+    .catch(function() {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (!getSavedKey()) {
+        currentMode = 'replay';
+        refreshModeUI();
+      }
+    });
+}
+
 function initBenchmark() {
   var pills = document.querySelectorAll('.preset-pill');
   pills.forEach(function(pill) {
     pill.addEventListener('click', function() {
       var key = pill.getAttribute('data-preset');
-      selectPreset(key);
+      selectPreset(key, true);
     });
   });
 
   var badge = document.getElementById('bench-badge');
   if (badge) {
-    badge.addEventListener('click', function() {
-      var current = getSavedKey();
-      var promptMsg = currentLang === 'zh'
-        ? '输入您的 OpenRouter API Key（仅保存在当前浏览器本地，直连模型）：'
-        : 'Enter your OpenRouter API Key (stored locally in browser):';
-      var input = prompt(promptMsg, current);
-      if (input !== null) {
-        var trimmed = input.trim();
-        try {
-          if (trimmed) {
-            localStorage.setItem('jev_openrouter_key', trimmed);
-          } else {
-            localStorage.removeItem('jev_openrouter_key');
-          }
-        } catch (e) {}
-        checkApiStatus();
-      }
-    });
+    badge.addEventListener('click', handleBadgeClick);
   }
 
-  checkApiStatus();
+  if (getSavedKey()) {
+    currentMode = 'user_key';
+  } else {
+    currentMode = 'replay';
+  }
+  refreshModeUI();
+  silentProbeServer();
 }
 
-function selectPreset(key) {
+function handleBadgeClick() {
+  var savedKey = getSavedKey();
+  var promptMsg = '';
+  var nl = String.fromCharCode(10);
+  if (currentLang === 'zh') {
+    if (savedKey) {
+      promptMsg = '当前已配置个人 OpenRouter API Key：' + nl + maskKey(savedKey) +
+        nl + nl + '• 输入新的 Key 可修改' + nl + '• 留空并点击确定可【清除 Key】退回访客模式' + nl + '• 点击取消保持现状';
+    } else {
+      promptMsg = '输入您的 OpenRouter API Key（直连 Jev 与 Gemini 2.5 Flash-Lite 双真机）：' + nl + nl +
+        '• Key 仅保存在您本地浏览器 localStorage' + nl + '• 点击取消继续使用零门槛基准回放模式';
+    }
+  } else {
+    if (savedKey) {
+      promptMsg = 'Currently using personal OpenRouter Key:' + nl + maskKey(savedKey) +
+        nl + nl + '• Enter new Key to update' + nl + '• Leave blank & OK to clear key and return to Guest mode' + nl + '• Cancel to keep current';
+    } else {
+      promptMsg = 'Enter your OpenRouter API Key:' + nl + nl +
+        '• Stored only in browser localStorage' + nl + '• Cancel to remain in Guest Trace Replay mode';
+    }
+  }
+
+  var input = prompt(promptMsg, savedKey || '');
+  if (input === null) return;
+
+  var trimmed = input.trim();
+  if (trimmed) {
+    try {
+      localStorage.setItem('jev_openrouter_key', trimmed);
+    } catch (e) {}
+    currentMode = 'user_key';
+    refreshModeUI();
+    runBenchmark();
+  } else {
+    try {
+      localStorage.removeItem('jev_openrouter_key');
+    } catch (e) {}
+    currentMode = 'replay';
+    refreshModeUI();
+    silentProbeServer();
+    runBenchmark();
+  }
+}
+
+function selectPreset(key, autoRun) {
   if (!BENCH_DATA[key]) return;
   activePresetKey = key;
 
@@ -2510,60 +2653,14 @@ function selectPreset(key) {
   if (input) {
     input.value = currentLang === 'zh' ? BENCH_DATA[key].text_zh : BENCH_DATA[key].text_en;
   }
-}
 
-async function checkApiStatus() {
-  var badge = document.getElementById('bench-badge');
-  var textZh = document.getElementById('bench-mode-text-zh');
-  var textEn = document.getElementById('bench-mode-text-en');
-  var savedKey = getSavedKey();
-
-  if (textZh) textZh.textContent = '探测连接...';
-  if (textEn) textEn.textContent = 'Probing API...';
-  if (badge) badge.classList.remove('is-offline');
-
-  try {
-    var headers = { 'Content-Type': 'application/json' };
-    if (savedKey) headers['x-openrouter-key'] = savedKey;
-
-    var res = await fetch('/api/decide', {
-      method: 'POST',
-      headers: headers,
-      body: JSON.stringify({ state: 'ping' })
-    });
-    if (res.ok) {
-      var data = await res.json();
-      if (data.mode === 'live') {
-        apiAvailable = true;
-        if (badge) {
-          badge.classList.remove('is-offline');
-          badge.title = currentLang === 'zh'
-            ? (savedKey ? 'Live API 已激活（使用自定义Key，点击修改）' : 'Live API 已激活（使用服务端全局凭据）')
-            : (savedKey ? 'Live API Active (Custom Key, click to edit)' : 'Live API Active (Server Credentials)');
-        }
-        if (textZh) textZh.textContent = savedKey ? 'Live API (自定义Key)' : 'Live API (已连接)';
-        if (textEn) textEn.textContent = savedKey ? 'Live API (Custom Key)' : 'Live API (Connected)';
-        return;
-      }
-    }
-  } catch (e) {
-    console.error('Decide probe error:', e);
+  if (autoRun !== false) {
+    runBenchmark();
   }
-
-  apiAvailable = false;
-  if (badge) {
-    badge.classList.add('is-offline');
-    badge.title = currentLang === 'zh'
-      ? (savedKey ? 'Key 连接未成功（点击重新配置）' : '点击配置 OpenRouter Key 可直接连真机')
-      : (savedKey ? 'Key connection failed (click to retry)' : 'Click to configure OpenRouter API Key');
-  }
-  if (textZh) textZh.textContent = savedKey ? '连接未就绪 (点击重试)' : '基准回放 (点击配置Key)';
-  if (textEn) textEn.textContent = savedKey ? 'Not Ready (Click to retry)' : 'Trace Replay (Click to config)';
 }
 
 async function runBenchmark() {
-  if (isRunning) return;
-  isRunning = true;
+  var runId = ++currentRunId;
 
   var btn = document.getElementById('bench-run-btn');
   var input = document.getElementById('bench-input');
@@ -2584,15 +2681,9 @@ async function runBenchmark() {
   var srcZh = document.getElementById('summary-source-zh');
   var srcEn = document.getElementById('summary-source-en');
 
-  btn.disabled = true;
   var inputText = (input ? input.value : '').trim();
 
-  jevTimerEl.textContent = '0';
-  llmTimerEl.textContent = '0';
-  llmCodeEl.textContent = '';
-  if (jevNoulBar) jevNoulBar.style.width = '0%';
-
-  var startTime = performance.now();
+  // Match preset payload data
   var matchedData = BENCH_DATA[activePresetKey] || BENCH_DATA.sql_injection;
   for (var k in BENCH_DATA) {
     if (BENCH_DATA[k].text_zh === inputText || BENCH_DATA[k].text_en === inputText) {
@@ -2601,50 +2692,134 @@ async function runBenchmark() {
     }
   }
 
+  // Reset display
+  jevTimerEl.textContent = '0';
+  llmTimerEl.textContent = '0';
+  llmCodeEl.textContent = '';
+  if (jevNoulBar) jevNoulBar.style.width = '0%';
+
+  // LEVEL 1: REPLAY MODE (0 Network, Instant & Deterministic)
+  if (currentMode === 'replay') {
+    var targetJevMs = matchedData.jev.latency;
+    var targetJevE2e = matchedData.jev.e2e;
+    var targetTtft = matchedData.llm.ttft;
+    var targetGenMs = matchedData.llm.genMs;
+    var targetJson = matchedData.llm.json;
+    var targetTokens = matchedData.llm.tokens;
+    var targetTps = matchedData.llm.tps;
+
+    // Jev playback: counter halt
+    var jevStart = performance.now();
+    var jevTicker = setInterval(function() {
+      if (runId !== currentRunId) {
+        clearInterval(jevTicker);
+        return;
+      }
+      var elapsed = Math.round(performance.now() - jevStart);
+      if (elapsed >= targetJevMs) {
+        clearInterval(jevTicker);
+        jevTimerEl.textContent = targetJevMs;
+        var nPct = Math.round(matchedData.jev.noul * 1000) / 10;
+        jevNoulVal.textContent = nPct + '% (' + (nPct > 50 ? 'True' : 'False') + ')';
+        jevNoulBar.style.width = nPct + '%';
+        jevChoiceVal.innerHTML = '<span class="badge-choice ' + matchedData.jev.choiceClass + '">' + matchedData.jev.choice + '</span>';
+        jevScoreVal.textContent = matchedData.jev.scoreText;
+        if (jevMeta2Zh) jevMeta2Zh.textContent = '端到端物理链路: ' + targetJevE2e.toLocaleString() + 'ms (含跨洋公网RTT)';
+        if (jevMeta2En) jevMeta2En.textContent = 'Physical RTT: ' + targetJevE2e.toLocaleString() + 'ms (Cross-Ocean)';
+      } else {
+        jevTimerEl.textContent = elapsed;
+      }
+    }, 10);
+
+    // LLM TTFT counter
+    var llmStart = performance.now();
+    var llmTicker = setInterval(function() {
+      if (runId !== currentRunId) {
+        clearInterval(llmTicker);
+        return;
+      }
+      var elapsed = Math.round(performance.now() - llmStart);
+      if (elapsed >= targetTtft) {
+        clearInterval(llmTicker);
+        llmTimerEl.textContent = targetTtft.toLocaleString();
+      } else {
+        llmTimerEl.textContent = elapsed.toLocaleString();
+      }
+    }, 20);
+
+    // Wait for TTFT to start streaming (shortened animation for responsiveness)
+    await new Promise(function(r) { setTimeout(r, Math.min(targetTtft, 420)); });
+    if (runId !== currentRunId) return;
+    clearInterval(llmTicker);
+    llmTimerEl.textContent = targetTtft.toLocaleString();
+
+    // Stream out JSON characters smoothly
+    var chars = targetJson.length;
+    var idx = 0;
+    var streamDelay = Math.max(8, Math.floor(Math.min(targetGenMs, 420) / (chars / 3)));
+    while (idx < chars) {
+      if (runId !== currentRunId) return;
+      idx = Math.min(chars, idx + 3);
+      llmCodeEl.textContent = targetJson.slice(0, idx);
+      await new Promise(function(r) { setTimeout(r, streamDelay); });
+    }
+
+    if (runId !== currentRunId) return;
+
+    if (llmMetaZh) llmMetaZh.textContent = targetTokens + ' 输出 Token · 逐字解码循环';
+    if (llmMetaEn) llmMetaEn.textContent = targetTokens + ' Output Tokens · Autoregressive Loop';
+    if (llmMeta2Zh) llmMeta2Zh.textContent = '纯生成耗时: ~' + targetGenMs + 'ms · 吐字速率: ~' + targetTps + ' tok/s';
+    if (llmMeta2En) llmMeta2En.textContent = 'Gen Time: ~' + targetGenMs + 'ms · ~' + targetTps + ' tok/s';
+
+    var ratio = (targetTtft / targetJevMs).toFixed(1);
+    if (speedupEl) speedupEl.textContent = ratio + 'x (TTFT比)';
+    if (srcZh) srcZh.textContent = '真机基准回放 (Gemini 2.5 Flash-Lite)';
+    if (srcEn) srcEn.textContent = 'Trace Replay (Gemini 2.5 Flash-Lite)';
+    return;
+  }
+
+  // LEVEL 2 & 3: LIVE API EXECUTION (Dual Model Concurrent)
+  if (btn) btn.disabled = true;
+  var startTime = performance.now();
   var savedKey = getSavedKey();
   var reqHeaders = { 'Content-Type': 'application/json' };
   if (savedKey) reqHeaders['x-openrouter-key'] = savedKey;
 
-  var jevSettled = false;
-  var targetJevPureMs = matchedData.jev.latency;
-  var targetJevE2eMs = matchedData.jev.e2e;
+  var jevPromise = fetch('/api/decide', {
+    method: 'POST',
+    headers: reqHeaders,
+    body: JSON.stringify({ state: inputText })
+  }).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; });
 
-  // Real-time counter ticker
-  var ticker = setInterval(function() {
-    var now = performance.now();
-    var elapsed = Math.round(now - startTime);
+  var llmPromise = fetch('/api/llm', {
+    method: 'POST',
+    headers: reqHeaders,
+    body: JSON.stringify({ state: inputText })
+  }).catch(function() { return null; });
+
+  // Tickers while waiting for live responses
+  var jevSettled = false;
+  var liveTicker = setInterval(function() {
+    if (runId !== currentRunId) {
+      clearInterval(liveTicker);
+      return;
+    }
+    var elapsed = Math.round(performance.now() - startTime);
     if (!jevSettled) {
-      jevTimerEl.textContent = Math.min(elapsed, targetJevPureMs);
+      jevTimerEl.textContent = Math.min(elapsed, 999);
     }
   }, 16);
 
   var jevLiveSuccess = false;
   var llmLiveSuccess = false;
 
-  // Concurrent Execution: Jev
-  var jevPromise = (apiAvailable !== false || savedKey)
-    ? fetch('/api/decide', {
-        method: 'POST',
-        headers: reqHeaders,
-        body: JSON.stringify({ state: inputText })
-      }).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; })
-    : Promise.resolve(null);
-
-  // Concurrent Execution: Gemini 2.5 Flash-Lite
-  var llmPromise = (apiAvailable !== false || savedKey)
-    ? fetch('/api/llm', {
-        method: 'POST',
-        headers: reqHeaders,
-        body: JSON.stringify({ state: inputText })
-      }).catch(function() { return null; })
-    : Promise.resolve(null);
-
-  // Handle Jev
-  var handleJev = async function() {
+  // Handle live Jev
+  var handleLiveJev = async function() {
     var res = await Promise.race([
       jevPromise,
-      new Promise(function(r) { setTimeout(r, 6500); })
+      new Promise(function(r) { setTimeout(r, 6000); })
     ]);
+    if (runId !== currentRunId) return null;
     var e2e = Math.round(performance.now() - startTime);
     jevSettled = true;
 
@@ -2682,26 +2857,28 @@ async function runBenchmark() {
       return { pureMs: pureMs, e2e: e2e };
     } else {
       // Fallback
-      jevTimerEl.textContent = targetJevPureMs;
-      var nPct = Math.round(matchedData.jev.noul * 1000) / 10;
-      jevNoulVal.textContent = nPct + '% (' + (nPct > 50 ? 'True' : 'False') + ')';
-      jevNoulBar.style.width = nPct + '%';
+      var pureFall = matchedData.jev.latency;
+      jevTimerEl.textContent = pureFall;
+      var nPctFall = Math.round(matchedData.jev.noul * 1000) / 10;
+      jevNoulVal.textContent = nPctFall + '% (' + (nPctFall > 50 ? 'True' : 'False') + ')';
+      jevNoulBar.style.width = nPctFall + '%';
       jevChoiceVal.innerHTML = '<span class="badge-choice ' + matchedData.jev.choiceClass + '">' + matchedData.jev.choice + '</span>';
       jevScoreVal.textContent = matchedData.jev.scoreText;
-
-      if (jevMeta2Zh) jevMeta2Zh.textContent = '端到端物理链路: ' + targetJevE2eMs.toLocaleString() + 'ms (含跨洋公网RTT)';
-      if (jevMeta2En) jevMeta2En.textContent = 'Physical RTT: ' + targetJevE2eMs.toLocaleString() + 'ms (Cross-Ocean)';
-      return { pureMs: targetJevPureMs, e2e: targetJevE2eMs };
+      if (jevMeta2Zh) jevMeta2Zh.textContent = '端到端物理链路: ' + matchedData.jev.e2e.toLocaleString() + 'ms (基准数据)';
+      if (jevMeta2En) jevMeta2En.textContent = 'Physical RTT: ' + matchedData.jev.e2e.toLocaleString() + 'ms (Baseline)';
+      return { pureMs: pureFall, e2e: matchedData.jev.e2e };
     }
   };
 
-  // Handle Gemini 2.5 Flash-Lite Stream
-  var handleLlm = async function() {
+  // Handle live LLM stream
+  var handleLiveLlm = async function() {
     try {
       var res = await Promise.race([
         llmPromise,
-        new Promise(function(r) { setTimeout(r, 6500); })
+        new Promise(function(r) { setTimeout(r, 6000); })
       ]);
+      if (runId !== currentRunId) return null;
+
       if (res && res.ok && (res.headers.get('content-type') || '').includes('text/event-stream')) {
         var reader = res.body.getReader();
         var decoder = new TextDecoder();
@@ -2711,7 +2888,7 @@ async function runBenchmark() {
 
         while (true) {
           var chunk = await reader.read();
-          if (chunk.done) break;
+          if (chunk.done || runId !== currentRunId) break;
 
           if (!firstTokenTime) {
             firstTokenTime = performance.now();
@@ -2720,8 +2897,7 @@ async function runBenchmark() {
           }
 
           buffer += decoder.decode(chunk.value, { stream: true });
-          var lines = buffer.split('
-');
+          var lines = buffer.split(String.fromCharCode(10));
           buffer = lines.pop();
 
           for (var i = 0; i < lines.length; i++) {
@@ -2741,6 +2917,7 @@ async function runBenchmark() {
           }
         }
 
+        if (runId !== currentRunId) return null;
         var endLlmTime = performance.now();
         var totalLlm = Math.round(endLlmTime - startTime);
         var ttft = firstTokenTime ? Math.round(firstTokenTime - startTime) : Math.round(totalLlm * 0.6);
@@ -2759,59 +2936,34 @@ async function runBenchmark() {
       }
     } catch (e) {}
 
-    // Fallback animation for Gemini 2.5 Flash-Lite
-    var targetLlmMs = matchedData.llm.e2e;
+    // Fallback stream
+    if (runId !== currentRunId) return null;
     var targetTtft = matchedData.llm.ttft;
-    var targetGenMs = matchedData.llm.genMs;
-    var targetTokens = matchedData.llm.tokens;
-    var targetTps = matchedData.llm.tps;
     var targetJson = matchedData.llm.json;
-
-    // Wait for simulated TTFT arrival
-    await new Promise(function(r) { setTimeout(r, targetTtft); });
+    await new Promise(function(r) { setTimeout(r, 300); });
+    if (runId !== currentRunId) return null;
     llmTimerEl.textContent = targetTtft.toLocaleString();
-
-    // Stream out JSON
-    var chars = targetJson.length;
-    var idx = 0;
-    var delay = Math.max(10, Math.floor(targetGenMs / chars));
-    while (idx < chars) {
-      idx = Math.min(chars, idx + 3);
-      llmCodeEl.textContent = targetJson.slice(0, idx);
-      await new Promise(function(r) { setTimeout(r, delay); });
-    }
-
-    if (llmMetaZh) llmMetaZh.textContent = targetTokens + ' 输出 Token · 逐字解码循环';
-    if (llmMetaEn) llmMetaEn.textContent = targetTokens + ' Output Tokens · Autoregressive Loop';
-    if (llmMeta2Zh) llmMeta2Zh.textContent = '纯生成耗时: ~' + targetGenMs + 'ms · 吐字速率: ~' + targetTps + ' tok/s';
-    if (llmMeta2En) llmMeta2En.textContent = 'Gen Time: ~' + targetGenMs + 'ms · ~' + targetTps + ' tok/s';
-
-    return { ttft: targetTtft, genTime: targetGenMs, totalLlm: targetLlmMs };
+    llmCodeEl.textContent = targetJson;
+    return { ttft: targetTtft, genTime: matchedData.llm.genMs, totalLlm: matchedData.llm.e2e };
   };
 
-  // Run both
-  var results = await Promise.all([handleJev(), handleLlm()]);
-  clearInterval(ticker);
+  var results = await Promise.all([handleLiveJev(), handleLiveLlm()]);
+  clearInterval(liveTicker);
+  if (btn) btn.disabled = false;
+  if (runId !== currentRunId || !results[0] || !results[1]) return;
 
-  var jevRes = results[0];
-  var llmRes = results[1];
-
-  var speedupRatio = (llmRes.ttft / jevRes.pureMs).toFixed(1);
-  if (speedupEl) speedupEl.textContent = speedupRatio + 'x (TTFT比)';
+  var jRes = results[0];
+  var lRes = results[1];
+  var liveSpeedup = (lRes.ttft / jRes.pureMs).toFixed(1);
+  if (speedupEl) speedupEl.textContent = liveSpeedup + 'x (TTFT比)';
 
   if (jevLiveSuccess && llmLiveSuccess) {
-    if (srcZh) { srcZh.textContent = 'Live API (OpenRouter 双模型真机并发)'; srcZh.style.color = '#047857'; srcZh.style.fontWeight = '500'; }
-    if (srcEn) { srcEn.textContent = 'Live API (Dual Model Concurrent)'; srcEn.style.color = '#047857'; srcEn.style.fontWeight = '500'; }
-  } else if (jevLiveSuccess) {
-    if (srcZh) { srcZh.textContent = 'Live Jev + Gemini 基准流'; srcZh.style.color = '#047857'; srcZh.style.fontWeight = '500'; }
-    if (srcEn) { srcEn.textContent = 'Live Jev + Gemini Stream'; srcEn.style.color = '#047857'; srcEn.style.fontWeight = '500'; }
+    if (srcZh) { srcZh.textContent = 'Live API (OpenRouter 双模型真机并发)'; srcZh.style.color = '#047857'; }
+    if (srcEn) { srcEn.textContent = 'Live API (Dual Model Concurrent)'; srcEn.style.color = '#047857'; }
   } else {
-    if (srcZh) { srcZh.textContent = '真机基准回放 (Gemini 2.5 Flash-Lite)'; srcZh.style.color = ''; srcZh.style.fontWeight = ''; }
-    if (srcEn) { srcEn.textContent = 'Trace Replay (Gemini 2.5 Flash-Lite)'; srcEn.style.color = ''; srcEn.style.fontWeight = ''; }
+    if (srcZh) { srcZh.textContent = '基准回放 (直连未就绪或已降级)'; srcZh.style.color = ''; }
+    if (srcEn) { srcEn.textContent = 'Trace Replay (Live not ready)'; srcEn.style.color = ''; }
   }
-
-  btn.disabled = false;
-  isRunning = false;
 }
 
 function switchLang(lang) {
@@ -2836,6 +2988,7 @@ function switchLang(lang) {
   if (input && activePresetKey && BENCH_DATA[activePresetKey]) {
     input.value = lang === 'zh' ? BENCH_DATA[activePresetKey].text_zh : BENCH_DATA[activePresetKey].text_en;
   }
+  refreshModeUI();
 }
 
 if (document.readyState === 'loading') {

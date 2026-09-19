@@ -49,10 +49,20 @@ export default async function handler(req, res) {
   if (authHeader && authHeader.startsWith('Bearer ')) {
     bearerKey = authHeader.slice(7).trim();
   }
+  const hasServerKey = !!(process.env.OPENROUTER_API_KEY || process.env.TYPESAFE_API_KEY);
   const apiKey = process.env.OPENROUTER_API_KEY || process.env.TYPESAFE_API_KEY || clientKey || bearerKey;
 
+  if (req.body && (req.body.probe === true || req.body.state === 'ping')) {
+    return res.status(200).json({
+      success: true,
+      hasServerKey: hasServerKey,
+      hasKey: !!apiKey,
+      mode: apiKey ? 'live' : 'fallback'
+    });
+  }
+
   if (!apiKey) {
-    return res.status(200).json({ mode: 'fallback', reason: 'No API Key' });
+    return res.status(200).json({ mode: 'fallback', hasServerKey: false, reason: 'No API Key' });
   }
 
   let { state } = req.body || {};

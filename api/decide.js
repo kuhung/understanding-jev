@@ -87,11 +87,26 @@ export default async function handler(req, res) {
   if (authHeader && authHeader.startsWith('Bearer ')) {
     bearerKey = authHeader.slice(7).trim();
   }
+  const hasServerKey = !!(process.env.OPENROUTER_API_KEY || process.env.TYPESAFE_API_KEY);
   const apiKey = process.env.OPENROUTER_API_KEY || process.env.TYPESAFE_API_KEY || clientProvidedKey || bearerKey;
+
+  // Lightweight instant probe (zero upstream cost, instant response)
+  const isProbe = req.body && (req.body.probe === true || req.body.state === 'ping');
+  if (isProbe) {
+    return res.status(200).json({
+      success: true,
+      hasServerKey: hasServerKey,
+      hasKey: !!apiKey,
+      mode: apiKey ? 'live' : 'fallback',
+      reason: hasServerKey ? 'Server key configured' : (clientProvidedKey ? 'Client key provided' : 'No key configured')
+    });
+  }
+
   if (!apiKey) {
     return res.status(200).json({
       success: false,
       mode: 'fallback',
+      hasServerKey: false,
       reason: 'OPENROUTER_API_KEY not configured on server.'
     });
   }
