@@ -1749,9 +1749,9 @@ function pollOpenRouterStats(generationId, headers, extra, runId) {
         if (runId != null && runId !== currentRunId) return null;
         if (res) lastResult = res;
         var or = res && res.openrouter;
-        if (or && or.latency_ms != null && or.generation_ms != null) {
-          return res;
-        }
+        var ready = or && or.compute_ms != null;
+        if (ready && extra && extra.streamed && or.generation_ms == null) ready = false;
+        if (ready) return res;
         return attempt(idx + 1);
       });
     }
@@ -1782,11 +1782,13 @@ function setFelt(prefix, feltMs) {
 }
 
 function applyOpenRouterClock(prefix, or, feltMs, streamed) {
-  var computeMs = or && or.generation_ms != null ? Math.round(or.generation_ms) : null;
-  var totalMs = or && or.latency_ms != null ? Math.round(or.latency_ms) : null;
-  var routingMs = or && or.routing_ms != null
-    ? Math.round(or.routing_ms)
-    : (totalMs != null && computeMs != null ? Math.max(0, totalMs - computeMs) : null);
+  var computeMs = or && or.compute_ms != null ? Math.round(or.compute_ms) : null;
+  if (computeMs == null) {
+    if (streamed && or && or.generation_ms != null) computeMs = Math.round(or.generation_ms);
+    else if (or && or.provider_ms != null) computeMs = Math.round(or.provider_ms);
+  }
+  var totalMs = or && or.total_ms != null ? Math.round(or.total_ms) : null;
+  var routingMs = or && or.routing_ms != null ? Math.round(or.routing_ms) : null;
   var timerEl = document.getElementById(prefix + '-timer');
   var metaZh = document.getElementById(prefix + '-meta-zh');
   var metaEn = document.getElementById(prefix + '-meta-en');
@@ -1810,8 +1812,8 @@ function applyOpenRouterClock(prefix, or, feltMs, streamed) {
     metaCoreZh.push('Total ' + totalMs + 'ms');
     metaCoreEn.push('Total ' + totalMs + 'ms');
   }
-  if (metaZh) metaZh.textContent = metaCoreZh.length ? metaCoreZh.join(' · ') : 'OpenRouter 时间未返回';
-  if (metaEn) metaEn.textContent = metaCoreEn.length ? metaCoreEn.join(' · ') : 'OpenRouter timing unavailable';
+  if (metaZh) metaZh.textContent = metaCoreZh.length ? metaCoreZh.join(' · ') : (computeMs != null ? '' : 'OpenRouter 时间未返回');
+  if (metaEn) metaEn.textContent = metaCoreEn.length ? metaCoreEn.join(' · ') : (computeMs != null ? '' : 'OpenRouter timing unavailable');
   setFelt(prefix, feltMs);
 
   return {
