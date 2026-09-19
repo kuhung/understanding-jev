@@ -1166,8 +1166,8 @@ button:focus-visible {
         </div>
         <div class="bench-meta-tag orange">
           <span>●</span>
-          <span class="lang-zh" id="llm-meta-zh">66 输出 Token · 逐字解码循环</span>
-          <span class="lang-en" id="llm-meta-en" style="display:none">66 Output Tokens · Autoregressive Loop</span>
+          <span class="lang-zh" id="llm-meta-zh">逐字解码循环 · 回放</span>
+          <span class="lang-en" id="llm-meta-en" style="display:none">Autoregressive loop · replay</span>
         </div>
         <div class="bench-felt lang-zh" id="llm-felt-zh">网页体感 810ms</div>
         <div class="bench-felt lang-en" id="llm-felt-en" style="display:none">Page RTT 810ms</div>
@@ -2566,7 +2566,7 @@ button:focus-visible {
 <footer class="site-footer">
   <p>
     <a href="https://github.com/kuhung/understanding-jev" target="_blank" rel="noopener">GitHub</a>
-    · git: 1ff81fa
+    · git: d46eedb
   </p>
 </footer>
 
@@ -2814,7 +2814,7 @@ function pickOpenRouterCost(orStats, usage, promptRate, completionRate) {
   return null;
 }
 
-function fetchOpenRouterStats(generationId, headers, extra) {
+function fetchOpenRouterStatsOnce(generationId, headers, extra) {
   if (!generationId) return Promise.resolve(null);
   var payload = { id: generationId };
   if (extra) {
@@ -2826,6 +2826,36 @@ function fetchOpenRouterStats(generationId, headers, extra) {
     headers: headers,
     body: JSON.stringify(payload)
   }).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; });
+}
+
+function pollOpenRouterStats(generationId, headers, extra, runId) {
+  if (!generationId) return Promise.resolve(null);
+  var delays = [0, 2000, 3000, 4000, 5000, 5000];
+  var lastResult = null;
+
+  function attempt(idx) {
+    if (idx >= delays.length) return Promise.resolve(lastResult);
+    if (runId != null && runId !== currentRunId) return Promise.resolve(null);
+
+    function doFetch() {
+      return fetchOpenRouterStatsOnce(generationId, headers, extra).then(function(res) {
+        if (runId != null && runId !== currentRunId) return null;
+        if (res) lastResult = res;
+        var or = res && res.openrouter;
+        if (or && or.latency_ms != null && or.generation_ms != null) {
+          return res;
+        }
+        return attempt(idx + 1);
+      });
+    }
+
+    if (delays[idx] === 0) return doFetch();
+    return new Promise(function(resolve) {
+      setTimeout(function() { resolve(doFetch()); }, delays[idx]);
+    });
+  }
+
+  return attempt(0);
 }
 
 function setTypeLabel(prefix, zh, en) {
@@ -2853,7 +2883,6 @@ function applyOpenRouterClock(prefix, or, feltMs, streamed) {
   var timerEl = document.getElementById(prefix + '-timer');
   var metaZh = document.getElementById(prefix + '-meta-zh');
   var metaEn = document.getElementById(prefix + '-meta-en');
-  var tokens = or && or.completion_tokens != null ? or.completion_tokens : null;
 
   if (computeMs != null && timerEl) {
     timerEl.textContent = String(computeMs);
@@ -2873,10 +2902,6 @@ function applyOpenRouterClock(prefix, or, feltMs, streamed) {
   if (totalMs != null) {
     metaCoreZh.push('Total ' + totalMs + 'ms');
     metaCoreEn.push('Total ' + totalMs + 'ms');
-  }
-  if (tokens != null && streamed) {
-    metaCoreZh.push(tokens + ' 输出 Token');
-    metaCoreEn.push(tokens + ' output tokens');
   }
   if (metaZh) metaZh.textContent = metaCoreZh.length ? metaCoreZh.join(' · ') : 'OpenRouter 时间未返回';
   if (metaEn) metaEn.textContent = metaCoreEn.length ? metaCoreEn.join(' · ') : 'OpenRouter timing unavailable';
@@ -3238,8 +3263,8 @@ async function runBenchmark() {
       return;
     }
 
-    if (llmMetaZh) llmMetaZh.textContent = targetTokens + ' 输出 Token · 逐字解码循环';
-    if (llmMetaEn) llmMetaEn.textContent = targetTokens + ' Output Tokens · Autoregressive Loop';
+    if (llmMetaZh) llmMetaZh.textContent = '逐字解码循环 · 回放';
+    if (llmMetaEn) llmMetaEn.textContent = 'Autoregressive loop · replay';
     setFelt('llm', targetTtft);
 
     // Populate LLM verdicts
@@ -3335,21 +3360,27 @@ async function runBenchmark() {
       if (jevChoiceVal) jevChoiceVal.innerHTML = '<span class="badge-choice ' + choiceClass + '">' + formatActionText(choiceLabel, currentLang) + '</span>';
       if (jevScoreVal) jevScoreVal.textContent = formatScoreText(scoreVal, currentLang);
 
-      var statsRes = await fetchOpenRouterStats(res.id, reqHeaders, {
+      var jevCostFromResp = pickOpenRouterCost(res.openrouter || {}, res.usage, 0.042, 0);
+      if (jevCostVal) jevCostVal.textContent = formatUsd(jevCostFromResp);
+
+      if (jevMetaZh) jevMetaZh.textContent = 'OpenRouter 时间获取中...';
+      if (jevMetaEn) jevMetaEn.textContent = 'Fetching OpenRouter timing...';
+
+      var statsRes = await pollOpenRouterStats(res.id, reqHeaders, {
         streamed: false,
         usage: res.usage
-      });
+      }, runId);
       if (runId !== currentRunId) return null;
       var or = (statsRes && statsRes.openrouter) || {};
       var clock = applyOpenRouterClock('jev', or, e2e, false);
-      var jevCost = pickOpenRouterCost(or, res.usage, 0.042, 0);
-      if (jevCostVal) jevCostVal.textContent = formatUsd(jevCost);
+      var finalCost = pickOpenRouterCost(or, res.usage, 0.042, 0);
+      if (jevCostVal) jevCostVal.textContent = formatUsd(finalCost);
 
       if (clock.compute == null) {
         setTypeLabel('jev', '网页体感', 'Page RTT');
       }
 
-      return { compute: clock.compute, total: clock.total, felt: e2e, cost: jevCost || 0 };
+      return { compute: clock.compute, total: clock.total, felt: e2e, cost: finalCost || 0 };
     } else {
       // Fallback
       var pureFall = matchedData.jev.latency;
@@ -3445,21 +3476,27 @@ async function runBenchmark() {
           if (llmSeverityVal) llmSeverityVal.textContent = currentLang === 'zh' ? matchedData.llm.severityZh : matchedData.llm.severityEn;
         }
 
-        var statsRes = await fetchOpenRouterStats(generationId, reqHeaders, {
+        var llmCostFromUsage = pickOpenRouterCost({}, realUsage, 0.10, 0.40);
+        if (llmCostVal) llmCostVal.textContent = formatUsd(llmCostFromUsage);
+
+        if (llmMetaZh) llmMetaZh.textContent = 'OpenRouter 时间获取中...';
+        if (llmMetaEn) llmMetaEn.textContent = 'Fetching OpenRouter timing...';
+
+        var statsRes = await pollOpenRouterStats(generationId, reqHeaders, {
           streamed: true,
           usage: realUsage
-        });
+        }, runId);
         if (runId !== currentRunId) return null;
         var or = (statsRes && statsRes.openrouter) || {};
         var clock = applyOpenRouterClock('llm', or, llmShownMs, true);
-        var realLlmCost = pickOpenRouterCost(or, realUsage, 0.10, 0.40);
-        if (llmCostVal) llmCostVal.textContent = formatUsd(realLlmCost);
+        var finalLlmCost = pickOpenRouterCost(or, realUsage, 0.10, 0.40);
+        if (llmCostVal) llmCostVal.textContent = formatUsd(finalLlmCost);
 
         if (clock.compute == null) {
           setTypeLabel('llm', '网页体感', 'Page RTT');
         }
 
-        return { compute: clock.compute, total: clock.total, felt: llmShownMs, cost: realLlmCost || 0 };
+        return { compute: clock.compute, total: clock.total, felt: llmShownMs, cost: finalLlmCost || 0 };
       }
     } catch (e) {}
 
