@@ -1055,7 +1055,7 @@ button:focus-visible {
           <pre class="bench-prompt-code">[
   {
     "role": "system",
-    "content": "You are an automated traffic router. Classify user input into a JSON object: {\"threat\": boolean, \"action\": \"BLOCK\"|\"ESCALATE\"|\"ROUTE_TECH\"|\"ROUTE_SPAM\", \"severity\": \"LOW\"|\"MEDIUM\"|\"HIGH\"|\"CRITICAL\", \"reason\": string}. Respond ONLY with raw compact JSON, no markdown block."
+    "content": "You are a security and routing classifier. Given user input, output a JSON object with these fields:\n\n1. \"threat\" (boolean): Is this input a security threat, malicious attack, prompt injection, or abusive content? true = Malicious injection, attack, exploit, violation, or system abuse. false = Benign normal user query, operation, or benign ticket.\n\n2. \"action\" (string): Classify into the most appropriate handler. \"BLOCK\" = Security threats, malicious attacks, injections, or severe policy violations. \"ESCALATE\" = Urgent customer complaints, billing refund disputes, legal escalations. \"ROUTE_TECH\" = Technical inquiries, architectural consultation, bug diagnostics. \"ROUTE_SPAM\" = Spam, marketing messages, advertisements, or promotional broadcast.\n\n3. \"severity\" (string): Evaluate operational urgency. \"LOW\" = Normal query, routine priority. \"MEDIUM\" = Requires standard engineering attention. \"HIGH\" = Urgent customer or infrastructure escalation. \"CRITICAL\" = Immediate threat or severe outage risk.\n\n4. \"reason\" (string): Brief explanation.\n\nRespond ONLY with raw compact JSON, no markdown block."
   },
   {
     "role": "user",
@@ -1134,7 +1134,7 @@ button:focus-visible {
       <div class="bench-cost-tag">
         <span class="lang-zh">单次调用成本</span>
         <span class="lang-en" style="display:none">Cost / Call</span>
-        <strong id="jev-cost-val">~$0.000006</strong>
+        <strong id="jev-cost-val">~$0.000003</strong>
       </div>
     </div>
 
@@ -1200,7 +1200,7 @@ button:focus-visible {
       <div class="bench-cost-tag">
         <span class="lang-zh">单次调用成本</span>
         <span class="lang-en" style="display:none">Cost / Call</span>
-        <strong id="llm-cost-val">~$0.000025</strong>
+        <strong id="llm-cost-val">~$0.000035</strong>
       </div>
     </div>
   </div>
@@ -1214,8 +1214,8 @@ button:focus-visible {
     <div>
       <strong class="lang-zh">单次成本差值：</strong>
       <strong class="lang-en" style="display:none">Cost Diff: </strong>
-      <span class="lang-zh" id="summary-cost-zh">单次立省 ~$0.000019 (降 76.5%)</span>
-      <span class="lang-en" id="summary-cost-en" style="display:none">Save ~$0.000019 / call (-76.5%)</span>
+      <span class="lang-zh" id="summary-cost-zh">单次立省 ~$0.000032 (降 91.4%)</span>
+      <span class="lang-en" id="summary-cost-en" style="display:none">Save ~$0.000032 / call (-91.4%)</span>
     </div>
     <div>
       <strong class="lang-zh">运行源：</strong>
@@ -2555,7 +2555,7 @@ button:focus-visible {
 <footer class="site-footer">
   <p>
     <a href="https://github.com/kuhung/understanding-jev" target="_blank" rel="noopener">GitHub</a>
-    · git: 5628855
+    · git: 7ad74ed
   </p>
 </footer>
 
@@ -2577,7 +2577,7 @@ var BENCH_DATA = {
       choiceClass: "",
       scoreZh: "4 / 4 · 致命风险 (P0)",
       scoreEn: "4 / 4 · Critical (P0)",
-      cost: "~$0.000006"
+      cost: "~$0.000003"
     },
     llm: {
       ttft: 810,
@@ -2591,7 +2591,7 @@ var BENCH_DATA = {
       actionClass: "",
       severityZh: "CRITICAL 致命",
       severityEn: "CRITICAL",
-      cost: "~$0.000025",
+      cost: "~$0.000035",
       json: JSON.stringify({
         threat: true,
         action: "BLOCK",
@@ -2602,8 +2602,8 @@ var BENCH_DATA = {
     summary: {
       speedupZh: "快 ~5.8x (140ms vs 810ms)",
       speedupEn: "~5.8x faster (140ms vs 810ms TTFT)",
-      costZh: "单次立省 ~$0.000019 (降 76.5%)",
-      costEn: "Save ~$0.000019 / call (-76.5%)"
+      costZh: "单次立省 ~$0.000032 (降 91.4%)",
+      costEn: "Save ~$0.000032 / call (-91.4%)"
     }
   },
   angry_customer: {
@@ -2619,7 +2619,7 @@ var BENCH_DATA = {
       choiceClass: "safe",
       scoreZh: "3 / 4 · 紧急处理 (P1)",
       scoreEn: "3 / 4 · Urgent (P1)",
-      cost: "~$0.000006"
+      cost: "~$0.000003"
     },
     llm: {
       ttft: 790,
@@ -2633,7 +2633,7 @@ var BENCH_DATA = {
       actionClass: "safe",
       severityZh: "HIGH 紧急",
       severityEn: "HIGH",
-      cost: "~$0.000024",
+      cost: "~$0.000033",
       json: JSON.stringify({
         threat: false,
         action: "ESCALATE",
@@ -2644,8 +2644,8 @@ var BENCH_DATA = {
     summary: {
       speedupZh: "快 ~5.3x (150ms vs 790ms)",
       speedupEn: "~5.3x faster (150ms vs 790ms TTFT)",
-      costZh: "单次立省 ~$0.000018 (降 75.0%)",
-      costEn: "Save ~$0.000018 / call (-75.0%)"
+      costZh: "单次立省 ~$0.000030 (降 90.9%)",
+      costEn: "Save ~$0.000030 / call (-90.9%)"
     }
   },
   tech_support: {
@@ -2661,7 +2661,7 @@ var BENCH_DATA = {
       choiceClass: "info",
       scoreZh: "2 / 4 · 普通工单 (P2)",
       scoreEn: "2 / 4 · Medium (P2)",
-      cost: "~$0.000006"
+      cost: "~$0.000003"
     },
     llm: {
       ttft: 840,
@@ -2675,7 +2675,7 @@ var BENCH_DATA = {
       actionClass: "info",
       severityZh: "MEDIUM 普通",
       severityEn: "MEDIUM",
-      cost: "~$0.000026",
+      cost: "~$0.000036",
       json: JSON.stringify({
         threat: false,
         action: "ROUTE_TECH",
@@ -2686,8 +2686,8 @@ var BENCH_DATA = {
     summary: {
       speedupZh: "快 ~5.3x (160ms vs 840ms)",
       speedupEn: "~5.3x faster (160ms vs 840ms TTFT)",
-      costZh: "单次立省 ~$0.000020 (降 76.9%)",
-      costEn: "Save ~$0.000020 / call (-76.9%)"
+      costZh: "单次立省 ~$0.000033 (降 91.7%)",
+      costEn: "Save ~$0.000033 / call (-91.7%)"
     }
   },
   spam_promo: {
@@ -2703,7 +2703,7 @@ var BENCH_DATA = {
       choiceClass: "",
       scoreZh: "2 / 4 · 中风险 (P2)",
       scoreEn: "2 / 4 · Medium (P2)",
-      cost: "~$0.000006"
+      cost: "~$0.000003"
     },
     llm: {
       ttft: 760,
@@ -2717,7 +2717,7 @@ var BENCH_DATA = {
       actionClass: "",
       severityZh: "MEDIUM 中度",
       severityEn: "MEDIUM",
-      cost: "~$0.000023",
+      cost: "~$0.000032",
       json: JSON.stringify({
         threat: true,
         action: "ROUTE_SPAM",
@@ -2728,8 +2728,8 @@ var BENCH_DATA = {
     summary: {
       speedupZh: "快 ~5.6x (135ms vs 760ms)",
       speedupEn: "~5.6x faster (135ms vs 760ms TTFT)",
-      costZh: "单次立省 ~$0.000017 (降 73.9%)",
-      costEn: "Save ~$0.000017 / call (-73.9%)"
+      costZh: "单次立省 ~$0.000029 (降 90.6%)",
+      costEn: "Save ~$0.000029 / call (-90.6%)"
     }
   }
 };
@@ -3196,7 +3196,7 @@ async function runBenchmark() {
       if (jevScoreVal) jevScoreVal.textContent = formatScoreText(scoreVal, currentLang);
 
       var pTokens = (res.usage && res.usage.prompt_tokens) ? res.usage.prompt_tokens : 80;
-      var jevCost = (pTokens * 0.075) / 1000000;
+      var jevCost = (pTokens * 0.042) / 1000000;
       if (jevCostVal) jevCostVal.textContent = '$' + jevCost.toFixed(6);
 
       return { latency: realJevMs, e2e: e2e, cost: jevCost };
@@ -3209,7 +3209,7 @@ async function runBenchmark() {
       if (jevChoiceVal) jevChoiceVal.innerHTML = '<span class="badge-choice ' + matchedData.jev.choiceClass + '">' + (currentLang === 'zh' ? matchedData.jev.choiceZh : matchedData.jev.choiceEn) + '</span>';
       if (jevScoreVal) jevScoreVal.textContent = currentLang === 'zh' ? matchedData.jev.scoreZh : matchedData.jev.scoreEn;
       if (jevCostVal) jevCostVal.textContent = matchedData.jev.cost;
-      return { latency: pureFall, e2e: 1180, cost: 0.000006 };
+      return { latency: pureFall, e2e: 1180, cost: 0.000003 };
     }
   };
 
@@ -3277,7 +3277,7 @@ async function runBenchmark() {
 
         var outTokens = realUsage ? realUsage.completion_tokens : 66;
         var inTokens = realUsage ? realUsage.prompt_tokens : 85;
-        var realLlmCost = (inTokens * 0.075 + outTokens * 0.30) / 1000000;
+        var realLlmCost = (inTokens * 0.10 + outTokens * 0.40) / 1000000;
 
         if (llmMetaZh) llmMetaZh.textContent = outTokens + ' 输出 Token · 逐字解码循环';
         if (llmMetaEn) llmMetaEn.textContent = outTokens + ' Output Tokens · Autoregressive Loop';
@@ -3318,7 +3318,7 @@ async function runBenchmark() {
     if (llmActionVal) llmActionVal.innerHTML = '<span class="badge-choice ' + matchedData.llm.actionClass + '">' + (currentLang === 'zh' ? matchedData.llm.actionZh : matchedData.llm.actionEn) + '</span>';
     if (llmSeverityVal) llmSeverityVal.textContent = currentLang === 'zh' ? matchedData.llm.severityZh : matchedData.llm.severityEn;
     if (llmCostVal) llmCostVal.textContent = matchedData.llm.cost;
-    return { ttft: targetTtft, totalLlm: 1160, cost: 0.000025 };
+    return { ttft: targetTtft, totalLlm: 1160, cost: 0.000035 };
   };
 
   var results = await Promise.all([handleLiveJev(), handleLiveLlm()]);
