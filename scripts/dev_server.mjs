@@ -7,6 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import decideHandler from '../api/decide.js';
 import llmHandler from '../api/llm.js';
+import generationHandler from '../api/generation.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,8 +31,10 @@ const server = http.createServer(async (req, res) => {
   const pathname = parsedUrl.pathname;
 
   // Handle API routing
-  if (pathname === '/api/decide' || pathname === '/api/llm') {
-    const handlerFn = pathname === '/api/llm' ? llmHandler : decideHandler;
+  if (pathname === '/api/decide' || pathname === '/api/llm' || pathname === '/api/generation') {
+    const handlerFn = pathname === '/api/llm'
+      ? llmHandler
+      : (pathname === '/api/generation' ? generationHandler : decideHandler);
     let body = '';
     req.on('data', chunk => {
       body += chunk;

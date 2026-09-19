@@ -115,17 +115,52 @@ export default async function handler(req, res) {
     });
 
     const reader = upstreamRes.body.getReader();
-    let isFirstChunk = true;
+    const decoder = new TextDecoder();
+    let firstChunkAt = null;
+    let generationId = null;
+    let streamUsage = null;
+    let parseBuf = '';
+
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      if (isFirstChunk) {
-        isFirstChunk = false;
-        const upstreamTtft = Date.now() - startTime;
-        res.write(`data: ${JSON.stringify({ _upstream_ttft: upstreamTtft })}\n\n`);
-      }
+      if (!firstChunkAt) firstChunkAt = Date.now();
       res.write(value);
+
+      parseBuf += decoder.decode(value, { stream: true });
+      const lines = parseBuf.split('\n');
+      parseBuf = lines.pop();
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('data: ') || trimmed === 'data: [DONE]') continue;
+        try {
+          const payload = JSON.parse(trimmed.slice(6));
+          if (!generationId && payload.id) generationId = payload.id;
+          if (payload.usage) streamUsage = payload.usage;
+        } catch (e) {}
+      }
     }
+
+    const leftover = parseBuf.trim();
+    if (leftover.startsWith('data: ') && leftover !== 'data: [DONE]') {
+      try {
+        const payload = JSON.parse(leftover.slice(6));
+        if (!generationId && payload.id) generationId = payload.id;
+        if (payload.usage) streamUsage = payload.usage;
+      } catch (e) {}
+    }
+
+    const proxyTotal = Date.now() - startTime;
+    const proxyTtft = firstChunkAt ? firstChunkAt - startTime : proxyTotal;
+    console.log(
+      `[Gemini Live Call] proxyTtft=${proxyTtft}ms proxyTotal=${proxyTotal}ms id=${generationId}`
+    );
+    res.write(`data: ${JSON.stringify({
+      _generation_id: generationId,
+      _proxy_ttft: proxyTtft,
+      _proxy_total: proxyTotal,
+      usage: streamUsage
+    })}\n\n`);
     res.end();
   } catch (err) {
     console.error('[Gemini proxy error]:', err);

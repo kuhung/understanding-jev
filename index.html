@@ -1096,8 +1096,8 @@ button:focus-visible {
       <div class="bench-latency-box">
         <div class="bench-latency-num">
           <span id="jev-timer">140</span><span class="bench-latency-unit">ms</span>
-          <span id="jev-latency-type" class="bench-latency-type lang-zh">OpenRouter 响应</span>
-          <span id="jev-latency-type-en" class="bench-latency-type lang-en" style="display:none">OpenRouter API</span>
+          <span id="jev-latency-type" class="bench-latency-type lang-zh">响应耗时</span>
+          <span id="jev-latency-type-en" class="bench-latency-type lang-en" style="display:none">Response time</span>
         </div>
         <div class="bench-meta-tag green">
           <span>●</span>
@@ -2555,7 +2555,7 @@ button:focus-visible {
 <footer class="site-footer">
   <p>
     <a href="https://github.com/kuhung/understanding-jev" target="_blank" rel="noopener">GitHub</a>
-    · git: 7ad74ed
+    · git: ef069f1
   </p>
 </footer>
 
@@ -2783,6 +2783,40 @@ function formatSeverityText(sevVal, lang) {
   if (s.indexOf('MEDIUM') >= 0) return lang === 'zh' ? 'MEDIUM 普通' : 'MEDIUM';
   if (s.indexOf('LOW') >= 0) return lang === 'zh' ? 'LOW 低风险' : 'LOW';
   return s;
+}
+
+function formatUsd(cost) {
+  if (cost == null || !isFinite(cost)) return '—';
+  var s = Number(cost).toFixed(7).replace(/0+$/, '');
+  if (s.charAt(s.length - 1) === '.') s += '0';
+  return '$' + s;
+}
+
+function pickOpenRouterCost(orStats, usage, promptRate, completionRate) {
+  if (orStats && orStats.cost != null && isFinite(orStats.cost)) return Number(orStats.cost);
+  if (typeof usage === 'number' && isFinite(usage) && usage >= 0) return usage;
+  if (usage && typeof usage.cost === 'number' && isFinite(usage.cost)) return usage.cost;
+  if (usage && typeof usage.total_cost === 'number' && isFinite(usage.total_cost)) return usage.total_cost;
+  var pin = (usage && (usage.prompt_tokens || usage.tokens_prompt)) || (orStats && orStats.prompt_tokens);
+  var cout = (usage && (usage.completion_tokens || usage.tokens_completion)) || (orStats && orStats.completion_tokens) || 0;
+  if (pin) return (Number(pin) * promptRate + Number(cout) * (completionRate || 0)) / 1000000;
+  return null;
+}
+
+function fetchOpenRouterStats(generationId, headers, extra) {
+  if (!generationId) return Promise.resolve(null);
+  var payload = { id: generationId };
+  if (extra) {
+    if (extra.proxy_ttft != null) payload.proxy_ttft = extra.proxy_ttft;
+    if (extra.proxy_total != null) payload.proxy_total = extra.proxy_total;
+    if (extra.streamed != null) payload.streamed = extra.streamed;
+    if (extra.usage) payload.usage = extra.usage;
+  }
+  return fetch('/api/generation', {
+    method: 'POST',
+    headers: headers,
+    body: JSON.stringify(payload)
+  }).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; });
 }
 
 function toggleJsonView() {
@@ -3024,6 +3058,8 @@ async function runBenchmark() {
   var llmCodeEl = document.getElementById('llm-stream-output');
   var llmMetaZh = document.getElementById('llm-meta-zh');
   var llmMetaEn = document.getElementById('llm-meta-en');
+  var jevMetaZh = document.getElementById('jev-meta-zh');
+  var jevMetaEn = document.getElementById('jev-meta-en');
 
   var speedupEl = document.getElementById('summary-speedup');
   var summaryCostZh = document.getElementById('summary-cost-zh');
@@ -3042,11 +3078,10 @@ async function runBenchmark() {
     }
   }
 
-  // Reset display
+  // Reset clocks only. Keep last verdicts until new results land, to avoid a blank flash.
   if (jevTimerEl) jevTimerEl.textContent = '0';
   if (llmTimerEl) llmTimerEl.textContent = '0';
   if (llmCodeEl) llmCodeEl.textContent = '';
-  if (jevNoulBar) jevNoulBar.style.width = '0%';
 
   // LEVEL 1: REPLAY MODE (0 Network, Instant & Deterministic)
   if (currentMode === 'replay') {
@@ -3056,48 +3091,44 @@ async function runBenchmark() {
     var targetJson = matchedData.llm.json;
     var targetTokens = matchedData.llm.tokens;
 
-    // Jev playback: ticker
-    var jevStart = performance.now();
-    var jevTicker = setInterval(function() {
+    var replayStart = performance.now();
+    var jevReplayDone = false;
+    var llmReplayDone = false;
+    var replayTicker = setInterval(function() {
       if (runId !== currentRunId) {
-        clearInterval(jevTicker);
+        clearInterval(replayTicker);
         return;
       }
-      var elapsed = Math.round(performance.now() - jevStart);
-      if (elapsed >= targetJevMs) {
-        clearInterval(jevTicker);
-        if (jevTimerEl) jevTimerEl.textContent = targetJevMs;
-        if (jevNoulVal) jevNoulVal.textContent = currentLang === 'zh' ? matchedData.jev.noulZh : matchedData.jev.noulEn;
-        if (jevNoulBar) jevNoulBar.style.width = (matchedData.jev.noulProb * 100).toFixed(1) + '%';
-        if (jevChoiceVal) jevChoiceVal.innerHTML = '<span class="badge-choice ' + matchedData.jev.choiceClass + '">' + (currentLang === 'zh' ? matchedData.jev.choiceZh : matchedData.jev.choiceEn) + '</span>';
-        if (jevScoreVal) jevScoreVal.textContent = currentLang === 'zh' ? matchedData.jev.scoreZh : matchedData.jev.scoreEn;
-        if (jevCostVal) jevCostVal.textContent = matchedData.jev.cost;
-      } else {
-        if (jevTimerEl) jevTimerEl.textContent = elapsed;
+      var elapsed = Math.round(performance.now() - replayStart);
+      if (!jevReplayDone) {
+        if (elapsed >= targetJevMs) {
+          jevReplayDone = true;
+          if (jevTimerEl) jevTimerEl.textContent = targetJevMs;
+          if (jevNoulVal) jevNoulVal.textContent = currentLang === 'zh' ? matchedData.jev.noulZh : matchedData.jev.noulEn;
+          if (jevNoulBar) jevNoulBar.style.width = (matchedData.jev.noulProb * 100).toFixed(1) + '%';
+          if (jevChoiceVal) jevChoiceVal.innerHTML = '<span class="badge-choice ' + matchedData.jev.choiceClass + '">' + (currentLang === 'zh' ? matchedData.jev.choiceZh : matchedData.jev.choiceEn) + '</span>';
+          if (jevScoreVal) jevScoreVal.textContent = currentLang === 'zh' ? matchedData.jev.scoreZh : matchedData.jev.scoreEn;
+          if (jevCostVal) jevCostVal.textContent = matchedData.jev.cost;
+        } else if (jevTimerEl) {
+          jevTimerEl.textContent = elapsed;
+        }
       }
-    }, 10);
+      if (!llmReplayDone) {
+        if (elapsed >= targetTtft) {
+          llmReplayDone = true;
+          if (llmTimerEl) llmTimerEl.textContent = targetTtft;
+        } else if (llmTimerEl) {
+          llmTimerEl.textContent = elapsed;
+        }
+      }
+      if (jevReplayDone && llmReplayDone) clearInterval(replayTicker);
+    }, 16);
 
-    // LLM TTFT counter
-    var llmStart = performance.now();
-    var llmTicker = setInterval(function() {
-      if (runId !== currentRunId) {
-        clearInterval(llmTicker);
-        return;
-      }
-      var elapsed = Math.round(performance.now() - llmStart);
-      if (elapsed >= targetTtft) {
-        clearInterval(llmTicker);
-        if (llmTimerEl) llmTimerEl.textContent = targetTtft.toLocaleString();
-      } else {
-        if (llmTimerEl) llmTimerEl.textContent = elapsed.toLocaleString();
-      }
-    }, 20);
-
-    // Wait for TTFT to start streaming (shortened animation for responsiveness)
     await new Promise(function(r) { setTimeout(r, Math.min(targetTtft, 400)); });
-    if (runId !== currentRunId) return;
-    clearInterval(llmTicker);
-    if (llmTimerEl) llmTimerEl.textContent = targetTtft.toLocaleString();
+    if (runId !== currentRunId) {
+      clearInterval(replayTicker);
+      return;
+    }
 
     // Stream out JSON characters smoothly
     var chars = targetJson.length;
@@ -3110,7 +3141,10 @@ async function runBenchmark() {
       await new Promise(function(r) { setTimeout(r, streamDelay); });
     }
 
-    if (runId !== currentRunId) return;
+    if (runId !== currentRunId) {
+      clearInterval(replayTicker);
+      return;
+    }
 
     if (llmMetaZh) llmMetaZh.textContent = targetTokens + ' 输出 Token · 逐字解码循环';
     if (llmMetaEn) llmMetaEn.textContent = targetTokens + ' Output Tokens · Autoregressive Loop';
@@ -3120,6 +3154,10 @@ async function runBenchmark() {
     if (llmActionVal) llmActionVal.innerHTML = '<span class="badge-choice ' + matchedData.llm.actionClass + '">' + (currentLang === 'zh' ? matchedData.llm.actionZh : matchedData.llm.actionEn) + '</span>';
     if (llmSeverityVal) llmSeverityVal.textContent = currentLang === 'zh' ? matchedData.llm.severityZh : matchedData.llm.severityEn;
     if (llmCostVal) llmCostVal.textContent = matchedData.llm.cost;
+
+    clearInterval(replayTicker);
+    if (jevTimerEl) jevTimerEl.textContent = targetJevMs;
+    if (llmTimerEl) llmTimerEl.textContent = targetTtft;
 
     // Summary bar
     if (speedupEl) speedupEl.textContent = currentLang === 'zh' ? matchedData.summary.speedupZh : matchedData.summary.speedupEn;
@@ -3150,6 +3188,9 @@ async function runBenchmark() {
   }).catch(function() { return null; });
 
   var jevSettled = false;
+  var llmSettled = false;
+  var jevShownMs = 0;
+  var llmShownMs = 0;
   var liveTicker = setInterval(function() {
     if (runId !== currentRunId) {
       clearInterval(liveTicker);
@@ -3157,7 +3198,12 @@ async function runBenchmark() {
     }
     var elapsed = Math.round(performance.now() - startTime);
     if (!jevSettled && jevTimerEl) {
-      jevTimerEl.textContent = Math.min(elapsed, 999);
+      jevShownMs = elapsed;
+      jevTimerEl.textContent = String(elapsed);
+    }
+    if (!llmSettled && llmTimerEl) {
+      llmShownMs = elapsed;
+      llmTimerEl.textContent = String(elapsed);
     }
   }, 16);
 
@@ -3172,11 +3218,11 @@ async function runBenchmark() {
     if (runId !== currentRunId) return null;
     var e2e = Math.round(performance.now() - startTime);
     jevSettled = true;
+    jevShownMs = e2e;
+    if (jevTimerEl) jevTimerEl.textContent = String(e2e);
 
     if (res && res.mode === 'live' && res.answers) {
       jevLiveSuccess = true;
-      var realJevMs = res.latency_ms || 140;
-      if (jevTimerEl) jevTimerEl.textContent = realJevMs;
 
       var ans = res.answers;
       var noulProb = ans.is_threat ? (ans.is_threat.noul !== undefined ? ans.is_threat.noul : ans.is_threat.probability || 0) : 0.05;
@@ -3195,11 +3241,29 @@ async function runBenchmark() {
       if (jevChoiceVal) jevChoiceVal.innerHTML = '<span class="badge-choice ' + choiceClass + '">' + formatActionText(choiceLabel, currentLang) + '</span>';
       if (jevScoreVal) jevScoreVal.textContent = formatScoreText(scoreVal, currentLang);
 
-      var pTokens = (res.usage && res.usage.prompt_tokens) ? res.usage.prompt_tokens : 80;
-      var jevCost = (pTokens * 0.042) / 1000000;
-      if (jevCostVal) jevCostVal.textContent = '$' + jevCost.toFixed(6);
+      var statsRes = await fetchOpenRouterStats(res.id, reqHeaders, {
+        proxy_ttft: res.proxy_ms || e2e,
+        proxy_total: res.proxy_ms || e2e,
+        streamed: false,
+        usage: res.usage
+      });
+      if (runId !== currentRunId) return null;
+      var or = (statsRes && statsRes.openrouter) || res.openrouter || {};
+      var totalJevMs = or.latency_ms != null ? Math.round(or.latency_ms) : null;
+      var providerMs = or.generation_ms != null ? Math.round(or.generation_ms) : null;
 
-      return { latency: realJevMs, e2e: e2e, cost: jevCost };
+      if (providerMs != null && totalJevMs != null) {
+        if (jevMetaZh) jevMetaZh.textContent = 'OpenRouter Provider ' + providerMs + 'ms · 总耗时 ' + totalJevMs + 'ms';
+        if (jevMetaEn) jevMetaEn.textContent = 'OpenRouter provider ' + providerMs + 'ms · total ' + totalJevMs + 'ms';
+      } else if (jevMetaZh) {
+        jevMetaZh.textContent = '单步直出决策 · 零采样等待';
+        if (jevMetaEn) jevMetaEn.textContent = 'Single Forward Pass · No Sampling Wait';
+      }
+
+      var jevCost = pickOpenRouterCost(or, res.usage, 0.042, 0);
+      if (jevCostVal) jevCostVal.textContent = formatUsd(jevCost);
+
+      return { latency: jevShownMs, official: providerMs, e2e: e2e, cost: jevCost || 0 };
     } else {
       // Fallback
       var pureFall = matchedData.jev.latency;
@@ -3225,20 +3289,15 @@ async function runBenchmark() {
         var reader = res.body.getReader();
         var decoder = new TextDecoder();
         var streamText = '';
-        var firstTokenTime = null;
         var buffer = '';
-        var serverTtft = null;
         var realUsage = null;
+        var generationId = null;
+        var proxyTtft = null;
+        var proxyTotal = null;
 
         while (true) {
           var chunk = await reader.read();
           if (chunk.done || runId !== currentRunId) break;
-
-          if (!firstTokenTime) {
-            firstTokenTime = performance.now();
-            var localTtft = Math.round(firstTokenTime - startTime);
-            if (llmTimerEl) llmTimerEl.textContent = localTtft.toLocaleString();
-          }
 
           buffer += decoder.decode(chunk.value, { stream: true });
           var lines = buffer.split(String.fromCharCode(10));
@@ -3251,16 +3310,20 @@ async function runBenchmark() {
             if (line.indexOf('data: ') === 0) {
               try {
                 var parsedChunk = JSON.parse(line.slice(6));
-                if (parsedChunk._upstream_ttft) {
-                  serverTtft = parsedChunk._upstream_ttft;
-                }
-                if (parsedChunk.usage) {
-                  realUsage = parsedChunk.usage;
-                }
+                if (parsedChunk._generation_id) generationId = parsedChunk._generation_id;
+                if (parsedChunk._proxy_ttft != null) proxyTtft = parsedChunk._proxy_ttft;
+                if (parsedChunk._proxy_total != null) proxyTotal = parsedChunk._proxy_total;
+                if (parsedChunk.id && !generationId) generationId = parsedChunk.id;
+                if (parsedChunk.usage) realUsage = parsedChunk.usage;
                 var delta = parsedChunk.choices && parsedChunk.choices[0] && parsedChunk.choices[0].delta && parsedChunk.choices[0].delta.content;
                 if (delta) {
                   streamText += delta;
                   if (llmCodeEl) llmCodeEl.textContent = streamText;
+                  if (!llmSettled) {
+                    llmSettled = true;
+                    llmShownMs = Math.round(performance.now() - startTime);
+                    if (llmTimerEl) llmTimerEl.textContent = String(llmShownMs);
+                  }
                 }
               } catch (e) {}
             }
@@ -3268,24 +3331,16 @@ async function runBenchmark() {
         }
 
         if (runId !== currentRunId) return null;
-        var endLlmTime = performance.now();
-        var totalLlm = Math.round(endLlmTime - startTime);
-        var finalTtft = serverTtft || (firstTokenTime ? Math.round(firstTokenTime - startTime) : 810);
+        if (!llmSettled) {
+          llmSettled = true;
+          llmShownMs = Math.round(performance.now() - startTime);
+          if (llmTimerEl) llmTimerEl.textContent = String(llmShownMs);
+        }
 
         llmLiveSuccess = true;
-        if (llmTimerEl) llmTimerEl.textContent = finalTtft.toLocaleString();
 
-        var outTokens = realUsage ? realUsage.completion_tokens : 66;
-        var inTokens = realUsage ? realUsage.prompt_tokens : 85;
-        var realLlmCost = (inTokens * 0.10 + outTokens * 0.40) / 1000000;
-
-        if (llmMetaZh) llmMetaZh.textContent = outTokens + ' 输出 Token · 逐字解码循环';
-        if (llmMetaEn) llmMetaEn.textContent = outTokens + ' Output Tokens · Autoregressive Loop';
-
-        // Parse JSON output into verdicts
         try {
           var fullObj = JSON.parse(streamText.trim());
-          if (llmCodeEl) llmCodeEl.textContent = JSON.stringify(fullObj, null, 2);
           var threatText = fullObj.threat === true
             ? (currentLang === 'zh' ? '高危拦截 (true)' : 'Threat (true)')
             : (fullObj.threat === false
@@ -3302,8 +3357,29 @@ async function runBenchmark() {
           if (llmSeverityVal) llmSeverityVal.textContent = currentLang === 'zh' ? matchedData.llm.severityZh : matchedData.llm.severityEn;
         }
 
-        if (llmCostVal) llmCostVal.textContent = '$' + realLlmCost.toFixed(6);
-        return { ttft: finalTtft, totalLlm: totalLlm, cost: realLlmCost };
+        var statsRes = await fetchOpenRouterStats(generationId, reqHeaders, {
+          proxy_ttft: proxyTtft != null ? proxyTtft : llmShownMs,
+          proxy_total: proxyTotal != null ? proxyTotal : Math.round(performance.now() - startTime),
+          streamed: true,
+          usage: realUsage
+        });
+        if (runId !== currentRunId) return null;
+        var or = (statsRes && statsRes.openrouter) || {};
+        var outTokens = or.completion_tokens != null ? or.completion_tokens : (realUsage ? realUsage.completion_tokens : 66);
+        var totalLlm = or.latency_ms != null ? Math.round(or.latency_ms) : Math.round(performance.now() - startTime);
+        var officialTtft = or.ttft_ms != null ? Math.round(or.ttft_ms) : null;
+        var realLlmCost = pickOpenRouterCost(or, realUsage, 0.10, 0.40);
+
+        if (officialTtft != null) {
+          if (llmMetaZh) llmMetaZh.textContent = outTokens + ' 输出 Token · OpenRouter TTFT ' + officialTtft + 'ms · 总耗时 ' + totalLlm + 'ms';
+          if (llmMetaEn) llmMetaEn.textContent = outTokens + ' output tokens · OpenRouter TTFT ' + officialTtft + 'ms · total ' + totalLlm + 'ms';
+        } else {
+          if (llmMetaZh) llmMetaZh.textContent = outTokens + ' 输出 Token · 逐字解码循环';
+          if (llmMetaEn) llmMetaEn.textContent = outTokens + ' Output Tokens · Autoregressive Loop';
+        }
+
+        if (llmCostVal) llmCostVal.textContent = formatUsd(realLlmCost);
+        return { ttft: llmShownMs, official: officialTtft, totalLlm: totalLlm, cost: realLlmCost || 0 };
       }
     } catch (e) {}
 
@@ -3312,7 +3388,7 @@ async function runBenchmark() {
     var targetTtft = matchedData.llm.ttft;
     await new Promise(function(r) { setTimeout(r, 300); });
     if (runId !== currentRunId) return null;
-    if (llmTimerEl) llmTimerEl.textContent = targetTtft.toLocaleString();
+    if (llmTimerEl) llmTimerEl.textContent = String(targetTtft);
     if (llmCodeEl) llmCodeEl.textContent = matchedData.llm.json;
     if (llmThreatVal) llmThreatVal.textContent = currentLang === 'zh' ? matchedData.llm.threatZh : matchedData.llm.threatEn;
     if (llmActionVal) llmActionVal.innerHTML = '<span class="badge-choice ' + matchedData.llm.actionClass + '">' + (currentLang === 'zh' ? matchedData.llm.actionZh : matchedData.llm.actionEn) + '</span>';
@@ -3335,10 +3411,10 @@ async function runBenchmark() {
       : ('~' + liveSpeedup + 'x faster (' + jRes.latency + 'ms vs ' + lRes.ttft + 'ms TTFT)');
   }
 
-  var diffCost = Math.max(0, lRes.cost - jRes.cost);
-  var savePct = Math.round((diffCost / (lRes.cost || 1)) * 1000) / 10;
-  if (summaryCostZh) summaryCostZh.textContent = '单次立省 ~$' + diffCost.toFixed(6) + ' (降 ' + savePct + '%)';
-  if (summaryCostEn) summaryCostEn.textContent = 'Save ~$' + diffCost.toFixed(6) + ' / call (-' + savePct + '%)';
+  var diffCost = Math.max(0, (lRes.cost || 0) - (jRes.cost || 0));
+  var savePct = lRes.cost ? Math.round((diffCost / lRes.cost) * 1000) / 10 : 0;
+  if (summaryCostZh) summaryCostZh.textContent = '单次立省 ' + formatUsd(diffCost) + ' (降 ' + savePct + '%)';
+  if (summaryCostEn) summaryCostEn.textContent = 'Save ' + formatUsd(diffCost) + ' / call (-' + savePct + '%)';
 
   if (jevLiveSuccess && llmLiveSuccess) {
     if (srcZh) { srcZh.textContent = 'Live API (OpenRouter 双模型真机并发)'; srcZh.style.color = '#047857'; }

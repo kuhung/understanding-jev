@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { buildOpenRouterPayload } from '../lib/openrouter-stats.js';
 
 function loadEnvFile(filePath) {
   try {
@@ -166,8 +167,6 @@ export default async function handler(req, res) {
       body: JSON.stringify(payload)
     });
 
-    const elapsed = Date.now() - startTime;
-
     if (!upstreamRes.ok) {
       const errText = await upstreamRes.text();
       console.warn(`Upstream Jev error [${upstreamRes.status}]:`, errText);
@@ -179,14 +178,29 @@ export default async function handler(req, res) {
     }
 
     const data = await upstreamRes.json();
-    console.log(`[Jev Live Call] Latency: ${elapsed}ms | Input: "${state.slice(0, 60)}" | Data:`, JSON.stringify(data));
+    const elapsed = Date.now() - startTime;
+    const generationId = data.id || data.generation_id || null;
+    const openrouter = buildOpenRouterPayload({
+      stats: null,
+      usage: data.usage,
+      proxyTtftMs: elapsed,
+      proxyTotalMs: elapsed,
+      streamed: false,
+      generationId
+    });
+
+    console.log(
+      `[Jev Live Call] proxy=${elapsed}ms cost=${openrouter.cost} id=${generationId} input="${state.slice(0, 60)}"`
+    );
     return res.status(200).json({
       success: true,
       mode: 'live',
       latency_ms: elapsed,
+      proxy_ms: elapsed,
+      openrouter,
       answers: data.answers || {},
       usage: data.usage || null,
-      id: data.id || null
+      id: generationId
     });
   } catch (err) {
     console.error('Decisions proxy error:', err);
