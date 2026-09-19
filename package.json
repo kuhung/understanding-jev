@@ -1,0 +1,10 @@
+{
+  "name": "understanding-jev",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev_server.mjs",
+    "build": "uv run --with markdown --with pygments python3 scripts/build_site.py"
+  }
+}
