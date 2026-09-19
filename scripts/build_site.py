@@ -983,6 +983,13 @@ BENCHMARK_CSS = """
 }
 .bench-meta-tag.green { color: #047857; }
 .bench-meta-tag.orange { color: #b45309; }
+.bench-felt {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+  line-height: 1.35;
+}
 
 .bench-verdicts {
   display: flex;
@@ -1219,10 +1226,10 @@ BENCHMARK_HTML = """
   </div>
 
   <p class="bench-desc lang-zh">
-    为什么要做这个对比？在线上生产链路（安全拦截、工单升级、意图路由）中，任务本质是确定性的状态判别。传统大模型（如 Gemini 2.5 Flash-Lite）必须经历首字推演与逐字解码，产生可感知的延迟与累加的总账单。Jev 采用单步前向推导直接输出原生类型。点击下方 4 组生产场景，直观对比真实响应时延与单次调用成本差值：
+    为什么要做这个对比？在线上生产链路（安全拦截、工单升级、意图路由）中，任务本质是确定性的状态判别。传统大模型（如 Gemini 2.5 Flash-Lite）必须经历首字推演与逐字解码，产生可感知的延迟与累加的总账单。Jev 采用单步前向推导直接输出原生类型。点击下方 4 组生产场景，对比 OpenRouter 官方时延与单次调用成本。大数字是 Provider（Jev）对生成耗时（Gemini）。网页体感是浏览器秒表，不参与快慢对比。
   </p>
   <p class="bench-desc lang-en" style="display:none">
-    Why this benchmark? In production pipelines (guardrails, routing, classification), tasks only require deterministic state verdicts. Autoregressive LLMs (like Gemini 2.5 Flash-Lite) require TTFT and token decoding loops, incurring continuous latency and higher total costs. Jev uses a single forward pass returning native typed values. Click the 4 presets below to compare real latency and per-call cost differences:
+    Why this benchmark? In production pipelines (guardrails, routing, classification), tasks only require deterministic state verdicts. Autoregressive LLMs (like Gemini 2.5 Flash-Lite) require token decoding loops, incurring continuous latency and higher total costs. Jev uses a single forward pass returning native typed values. The hero number is OpenRouter Provider (Jev) vs Generation (Gemini). Page RTT is a browser stopwatch and is not used for the speed comparison.
   </p>
 
   <div class="bench-presets" role="group" aria-label="Preset payloads">
@@ -1336,14 +1343,16 @@ BENCHMARK_HTML = """
       <div class="bench-latency-box">
         <div class="bench-latency-num">
           <span id="jev-timer">140</span><span class="bench-latency-unit">ms</span>
-          <span id="jev-latency-type" class="bench-latency-type lang-zh">响应耗时</span>
-          <span id="jev-latency-type-en" class="bench-latency-type lang-en" style="display:none">Response time</span>
+          <span id="jev-latency-type" class="bench-latency-type lang-zh">回放</span>
+          <span id="jev-latency-type-en" class="bench-latency-type lang-en" style="display:none">Replay</span>
         </div>
         <div class="bench-meta-tag green">
           <span>●</span>
-          <span class="lang-zh" id="jev-meta-zh">单步直出决策 · 零采样等待</span>
-          <span class="lang-en" id="jev-meta-en" style="display:none">Single Forward Pass · No Sampling Wait</span>
+          <span class="lang-zh" id="jev-meta-zh">单步直出 · 回放</span>
+          <span class="lang-en" id="jev-meta-en" style="display:none">Single pass · replay</span>
         </div>
+        <div class="bench-felt lang-zh" id="jev-felt-zh">网页体感 140ms</div>
+        <div class="bench-felt lang-en" id="jev-felt-en" style="display:none">Page RTT 140ms</div>
       </div>
       <div class="bench-verdicts">
         <div class="verdict-row">
@@ -1392,14 +1401,16 @@ BENCHMARK_HTML = """
       <div class="bench-latency-box">
         <div class="bench-latency-num">
           <span id="llm-timer">810</span><span class="bench-latency-unit">ms</span>
-          <span id="llm-latency-type" class="bench-latency-type lang-zh">首字延迟 TTFT</span>
-          <span id="llm-latency-type-en" class="bench-latency-type lang-en" style="display:none">TTFT</span>
+          <span id="llm-latency-type" class="bench-latency-type lang-zh">回放</span>
+          <span id="llm-latency-type-en" class="bench-latency-type lang-en" style="display:none">Replay</span>
         </div>
         <div class="bench-meta-tag orange">
           <span>●</span>
           <span class="lang-zh" id="llm-meta-zh">66 输出 Token · 逐字解码循环</span>
           <span class="lang-en" id="llm-meta-en" style="display:none">66 Output Tokens · Autoregressive Loop</span>
         </div>
+        <div class="bench-felt lang-zh" id="llm-felt-zh">网页体感 810ms</div>
+        <div class="bench-felt lang-en" id="llm-felt-en" style="display:none">Page RTT 810ms</div>
       </div>
       <div class="bench-verdicts">
         <div class="verdict-row">
@@ -1714,8 +1725,6 @@ function fetchOpenRouterStats(generationId, headers, extra) {
   if (!generationId) return Promise.resolve(null);
   var payload = { id: generationId };
   if (extra) {
-    if (extra.proxy_ttft != null) payload.proxy_ttft = extra.proxy_ttft;
-    if (extra.proxy_total != null) payload.proxy_total = extra.proxy_total;
     if (extra.streamed != null) payload.streamed = extra.streamed;
     if (extra.usage) payload.usage = extra.usage;
   }
@@ -1724,6 +1733,67 @@ function fetchOpenRouterStats(generationId, headers, extra) {
     headers: headers,
     body: JSON.stringify(payload)
   }).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; });
+}
+
+function setTypeLabel(prefix, zh, en) {
+  var zhEl = document.getElementById(prefix + '-latency-type');
+  var enEl = document.getElementById(prefix + '-latency-type-en');
+  if (zhEl) zhEl.textContent = zh;
+  if (enEl) enEl.textContent = en;
+}
+
+function setFelt(prefix, feltMs) {
+  var zhEl = document.getElementById(prefix + '-felt-zh');
+  var enEl = document.getElementById(prefix + '-felt-en');
+  var textZh = feltMs != null ? ('网页体感 ' + feltMs + 'ms') : '网页体感 —';
+  var textEn = feltMs != null ? ('Page RTT ' + feltMs + 'ms') : 'Page RTT —';
+  if (zhEl) zhEl.textContent = textZh;
+  if (enEl) enEl.textContent = textEn;
+}
+
+function applyOpenRouterClock(prefix, or, feltMs, streamed) {
+  var computeMs = or && or.generation_ms != null ? Math.round(or.generation_ms) : null;
+  var totalMs = or && or.latency_ms != null ? Math.round(or.latency_ms) : null;
+  var routingMs = or && or.routing_ms != null
+    ? Math.round(or.routing_ms)
+    : (totalMs != null && computeMs != null ? Math.max(0, totalMs - computeMs) : null);
+  var timerEl = document.getElementById(prefix + '-timer');
+  var metaZh = document.getElementById(prefix + '-meta-zh');
+  var metaEn = document.getElementById(prefix + '-meta-en');
+  var tokens = or && or.completion_tokens != null ? or.completion_tokens : null;
+
+  if (computeMs != null && timerEl) {
+    timerEl.textContent = String(computeMs);
+    if (streamed) {
+      setTypeLabel(prefix, '生成耗时', 'Generation');
+    } else {
+      setTypeLabel(prefix, 'Provider', 'Provider');
+    }
+  }
+
+  var metaCoreZh = [];
+  var metaCoreEn = [];
+  if (routingMs != null) {
+    metaCoreZh.push('Routing ' + routingMs + 'ms');
+    metaCoreEn.push('Routing ' + routingMs + 'ms');
+  }
+  if (totalMs != null) {
+    metaCoreZh.push('Total ' + totalMs + 'ms');
+    metaCoreEn.push('Total ' + totalMs + 'ms');
+  }
+  if (tokens != null && streamed) {
+    metaCoreZh.push(tokens + ' 输出 Token');
+    metaCoreEn.push(tokens + ' output tokens');
+  }
+  if (metaZh) metaZh.textContent = metaCoreZh.length ? metaCoreZh.join(' · ') : 'OpenRouter 时间未返回';
+  if (metaEn) metaEn.textContent = metaCoreEn.length ? metaCoreEn.join(' · ') : 'OpenRouter timing unavailable';
+  setFelt(prefix, feltMs);
+
+  return {
+    compute: computeMs,
+    total: totalMs,
+    routing: routingMs
+  };
 }
 
 function toggleJsonView() {
@@ -1989,6 +2059,21 @@ async function runBenchmark() {
   if (jevTimerEl) jevTimerEl.textContent = '0';
   if (llmTimerEl) llmTimerEl.textContent = '0';
   if (llmCodeEl) llmCodeEl.textContent = '';
+  setTypeLabel('jev', currentMode === 'replay' ? '回放' : '等待', currentMode === 'replay' ? 'Replay' : 'Waiting');
+  setTypeLabel('llm', currentMode === 'replay' ? '回放' : '等待', currentMode === 'replay' ? 'Replay' : 'Waiting');
+  setFelt('jev', null);
+  setFelt('llm', null);
+  if (currentMode === 'replay') {
+    if (jevMetaZh) jevMetaZh.textContent = '单步直出 · 回放';
+    if (jevMetaEn) jevMetaEn.textContent = 'Single pass · replay';
+    if (llmMetaZh) llmMetaZh.textContent = '逐字解码 · 回放';
+    if (llmMetaEn) llmMetaEn.textContent = 'Autoregressive · replay';
+  } else {
+    if (jevMetaZh) jevMetaZh.textContent = 'Routing · Total 等待';
+    if (jevMetaEn) jevMetaEn.textContent = 'Routing · Total pending';
+    if (llmMetaZh) llmMetaZh.textContent = 'Routing · Total 等待';
+    if (llmMetaEn) llmMetaEn.textContent = 'Routing · Total pending';
+  }
 
   // LEVEL 1: REPLAY MODE (0 Network, Instant & Deterministic)
   if (currentMode === 'replay') {
@@ -2016,6 +2101,9 @@ async function runBenchmark() {
           if (jevChoiceVal) jevChoiceVal.innerHTML = '<span class="badge-choice ' + matchedData.jev.choiceClass + '">' + (currentLang === 'zh' ? matchedData.jev.choiceZh : matchedData.jev.choiceEn) + '</span>';
           if (jevScoreVal) jevScoreVal.textContent = currentLang === 'zh' ? matchedData.jev.scoreZh : matchedData.jev.scoreEn;
           if (jevCostVal) jevCostVal.textContent = matchedData.jev.cost;
+          if (jevMetaZh) jevMetaZh.textContent = '单步直出 · 回放';
+          if (jevMetaEn) jevMetaEn.textContent = 'Single pass · replay';
+          setFelt('jev', targetJevMs);
         } else if (jevTimerEl) {
           jevTimerEl.textContent = elapsed;
         }
@@ -2024,6 +2112,7 @@ async function runBenchmark() {
         if (elapsed >= targetTtft) {
           llmReplayDone = true;
           if (llmTimerEl) llmTimerEl.textContent = targetTtft;
+          setFelt('llm', targetTtft);
         } else if (llmTimerEl) {
           llmTimerEl.textContent = elapsed;
         }
@@ -2042,7 +2131,10 @@ async function runBenchmark() {
     var idx = 0;
     var streamDelay = Math.max(8, Math.floor(Math.min(targetGenMs, 380) / (chars / 3)));
     while (idx < chars) {
-      if (runId !== currentRunId) return;
+      if (runId !== currentRunId) {
+        clearInterval(replayTicker);
+        return;
+      }
       idx = Math.min(chars, idx + 3);
       if (llmCodeEl) llmCodeEl.textContent = targetJson.slice(0, idx);
       await new Promise(function(r) { setTimeout(r, streamDelay); });
@@ -2055,6 +2147,7 @@ async function runBenchmark() {
 
     if (llmMetaZh) llmMetaZh.textContent = targetTokens + ' 输出 Token · 逐字解码循环';
     if (llmMetaEn) llmMetaEn.textContent = targetTokens + ' Output Tokens · Autoregressive Loop';
+    setFelt('llm', targetTtft);
 
     // Populate LLM verdicts
     if (llmThreatVal) llmThreatVal.textContent = currentLang === 'zh' ? matchedData.llm.threatZh : matchedData.llm.threatEn;
@@ -2127,6 +2220,7 @@ async function runBenchmark() {
     jevSettled = true;
     jevShownMs = e2e;
     if (jevTimerEl) jevTimerEl.textContent = String(e2e);
+    setFelt('jev', e2e);
 
     if (res && res.mode === 'live' && res.answers) {
       jevLiveSuccess = true;
@@ -2149,28 +2243,20 @@ async function runBenchmark() {
       if (jevScoreVal) jevScoreVal.textContent = formatScoreText(scoreVal, currentLang);
 
       var statsRes = await fetchOpenRouterStats(res.id, reqHeaders, {
-        proxy_ttft: res.proxy_ms || e2e,
-        proxy_total: res.proxy_ms || e2e,
         streamed: false,
         usage: res.usage
       });
       if (runId !== currentRunId) return null;
-      var or = (statsRes && statsRes.openrouter) || res.openrouter || {};
-      var totalJevMs = or.latency_ms != null ? Math.round(or.latency_ms) : null;
-      var providerMs = or.generation_ms != null ? Math.round(or.generation_ms) : null;
-
-      if (providerMs != null && totalJevMs != null) {
-        if (jevMetaZh) jevMetaZh.textContent = 'OpenRouter Provider ' + providerMs + 'ms · 总耗时 ' + totalJevMs + 'ms';
-        if (jevMetaEn) jevMetaEn.textContent = 'OpenRouter provider ' + providerMs + 'ms · total ' + totalJevMs + 'ms';
-      } else if (jevMetaZh) {
-        jevMetaZh.textContent = '单步直出决策 · 零采样等待';
-        if (jevMetaEn) jevMetaEn.textContent = 'Single Forward Pass · No Sampling Wait';
-      }
-
+      var or = (statsRes && statsRes.openrouter) || {};
+      var clock = applyOpenRouterClock('jev', or, e2e, false);
       var jevCost = pickOpenRouterCost(or, res.usage, 0.042, 0);
       if (jevCostVal) jevCostVal.textContent = formatUsd(jevCost);
 
-      return { latency: jevShownMs, official: providerMs, e2e: e2e, cost: jevCost || 0 };
+      if (clock.compute == null) {
+        setTypeLabel('jev', '网页体感', 'Page RTT');
+      }
+
+      return { compute: clock.compute, total: clock.total, felt: e2e, cost: jevCost || 0 };
     } else {
       // Fallback
       var pureFall = matchedData.jev.latency;
@@ -2180,7 +2266,7 @@ async function runBenchmark() {
       if (jevChoiceVal) jevChoiceVal.innerHTML = '<span class="badge-choice ' + matchedData.jev.choiceClass + '">' + (currentLang === 'zh' ? matchedData.jev.choiceZh : matchedData.jev.choiceEn) + '</span>';
       if (jevScoreVal) jevScoreVal.textContent = currentLang === 'zh' ? matchedData.jev.scoreZh : matchedData.jev.scoreEn;
       if (jevCostVal) jevCostVal.textContent = matchedData.jev.cost;
-      return { latency: pureFall, e2e: 1180, cost: 0.000003 };
+      return { latency: pureFall, compute: null, felt: e2e, cost: 0.000003 };
     }
   };
 
@@ -2230,6 +2316,7 @@ async function runBenchmark() {
                     llmSettled = true;
                     llmShownMs = Math.round(performance.now() - startTime);
                     if (llmTimerEl) llmTimerEl.textContent = String(llmShownMs);
+                    setFelt('llm', llmShownMs);
                   }
                 }
               } catch (e) {}
@@ -2242,6 +2329,7 @@ async function runBenchmark() {
           llmSettled = true;
           llmShownMs = Math.round(performance.now() - startTime);
           if (llmTimerEl) llmTimerEl.textContent = String(llmShownMs);
+          setFelt('llm', llmShownMs);
         }
 
         llmLiveSuccess = true;
@@ -2265,28 +2353,20 @@ async function runBenchmark() {
         }
 
         var statsRes = await fetchOpenRouterStats(generationId, reqHeaders, {
-          proxy_ttft: proxyTtft != null ? proxyTtft : llmShownMs,
-          proxy_total: proxyTotal != null ? proxyTotal : Math.round(performance.now() - startTime),
           streamed: true,
           usage: realUsage
         });
         if (runId !== currentRunId) return null;
         var or = (statsRes && statsRes.openrouter) || {};
-        var outTokens = or.completion_tokens != null ? or.completion_tokens : (realUsage ? realUsage.completion_tokens : 66);
-        var totalLlm = or.latency_ms != null ? Math.round(or.latency_ms) : Math.round(performance.now() - startTime);
-        var officialTtft = or.ttft_ms != null ? Math.round(or.ttft_ms) : null;
+        var clock = applyOpenRouterClock('llm', or, llmShownMs, true);
         var realLlmCost = pickOpenRouterCost(or, realUsage, 0.10, 0.40);
+        if (llmCostVal) llmCostVal.textContent = formatUsd(realLlmCost);
 
-        if (officialTtft != null) {
-          if (llmMetaZh) llmMetaZh.textContent = outTokens + ' 输出 Token · OpenRouter TTFT ' + officialTtft + 'ms · 总耗时 ' + totalLlm + 'ms';
-          if (llmMetaEn) llmMetaEn.textContent = outTokens + ' output tokens · OpenRouter TTFT ' + officialTtft + 'ms · total ' + totalLlm + 'ms';
-        } else {
-          if (llmMetaZh) llmMetaZh.textContent = outTokens + ' 输出 Token · 逐字解码循环';
-          if (llmMetaEn) llmMetaEn.textContent = outTokens + ' Output Tokens · Autoregressive Loop';
+        if (clock.compute == null) {
+          setTypeLabel('llm', '网页体感', 'Page RTT');
         }
 
-        if (llmCostVal) llmCostVal.textContent = formatUsd(realLlmCost);
-        return { ttft: llmShownMs, official: officialTtft, totalLlm: totalLlm, cost: realLlmCost || 0 };
+        return { compute: clock.compute, total: clock.total, felt: llmShownMs, cost: realLlmCost || 0 };
       }
     } catch (e) {}
 
@@ -2301,7 +2381,7 @@ async function runBenchmark() {
     if (llmActionVal) llmActionVal.innerHTML = '<span class="badge-choice ' + matchedData.llm.actionClass + '">' + (currentLang === 'zh' ? matchedData.llm.actionZh : matchedData.llm.actionEn) + '</span>';
     if (llmSeverityVal) llmSeverityVal.textContent = currentLang === 'zh' ? matchedData.llm.severityZh : matchedData.llm.severityEn;
     if (llmCostVal) llmCostVal.textContent = matchedData.llm.cost;
-    return { ttft: targetTtft, totalLlm: 1160, cost: 0.000035 };
+    return { ttft: targetTtft, compute: null, felt: targetTtft, cost: 0.000035 };
   };
 
   var results = await Promise.all([handleLiveJev(), handleLiveLlm()]);
@@ -2311,11 +2391,15 @@ async function runBenchmark() {
 
   var jRes = results[0];
   var lRes = results[1];
-  var liveSpeedup = (lRes.ttft / jRes.latency).toFixed(1);
+  var jMs = (jRes.compute != null) ? jRes.compute : (jRes.felt || jRes.latency);
+  var lMs = (lRes.compute != null) ? lRes.compute : (lRes.felt || lRes.ttft);
+  var liveSpeedup = (jMs && lMs) ? (lMs / jMs).toFixed(1) : '—';
+  var jLabel = (jRes.compute != null) ? 'Provider' : '网页';
+  var lLabel = (lRes.compute != null) ? '生成' : '网页';
   if (speedupEl) {
     speedupEl.textContent = currentLang === 'zh'
-      ? ('快 ~' + liveSpeedup + 'x (' + jRes.latency + 'ms vs ' + lRes.ttft + 'ms)')
-      : ('~' + liveSpeedup + 'x faster (' + jRes.latency + 'ms vs ' + lRes.ttft + 'ms TTFT)');
+      ? ('快 ~' + liveSpeedup + 'x (' + jMs + 'ms ' + jLabel + ' vs ' + lMs + 'ms ' + lLabel + ')')
+      : ('~' + liveSpeedup + 'x faster (' + jMs + 'ms ' + jLabel + ' vs ' + lMs + 'ms ' + lLabel + ')');
   }
 
   var diffCost = Math.max(0, (lRes.cost || 0) - (jRes.cost || 0));
