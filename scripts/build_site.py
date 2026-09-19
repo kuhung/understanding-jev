@@ -1481,6 +1481,14 @@ BENCHMARK_HTML = """
 BENCHMARK_JS = """
 var currentLang = 'zh';
 
+function trackEvent(name, data) {
+  try {
+    if (typeof window.va === 'function') {
+      window.va('event', data ? { name: name, data: data } : { name: name });
+    }
+  } catch (err) {}
+}
+
 var BENCH_DATA = {
   sql_injection: {
     text_zh: "SELECT * FROM users WHERE id = 1 OR 1=1; -- 提取管理员凭证",
@@ -1995,6 +2003,13 @@ function initBenchmark() {
     });
   });
 
+  document.querySelectorAll('.toc-item').forEach(function(link) {
+    link.addEventListener('click', function() {
+      var href = link.getAttribute('href') || '';
+      trackEvent('chapter_nav', { chapter: href.replace('#', '') });
+    });
+  });
+
   var badge = document.getElementById('bench-badge');
   if (badge) {
     badge.addEventListener('click', handleBadgeClick);
@@ -2056,6 +2071,7 @@ function handleBadgeClick() {
 function selectPreset(key, autoRun) {
   if (!BENCH_DATA[key]) return;
   activePresetKey = key;
+  trackEvent('select_preset', { preset: String(key) });
 
   document.querySelectorAll('.preset-pill').forEach(function(p) {
     var on = p.getAttribute('data-preset') === key;
@@ -2074,6 +2090,10 @@ function selectPreset(key, autoRun) {
 
 async function runBenchmark() {
   var runId = ++currentRunId;
+  trackEvent('run_benchmark', {
+    preset: String(activePresetKey || ''),
+    mode: String(currentMode || '')
+  });
 
   var btn = document.getElementById('bench-run-btn');
   var input = document.getElementById('bench-input');
@@ -2490,6 +2510,7 @@ async function runBenchmark() {
 
 function switchLang(lang) {
   currentLang = lang;
+  trackEvent('switch_lang', { lang: String(lang) });
   document.querySelectorAll('.lang-zh').forEach(function (el) {
     el.style.display = lang === 'zh' ? '' : 'none';
   });
@@ -2572,6 +2593,16 @@ if (document.readyState === 'loading') {
 """
 
 
+VERCEL_OBSERVABILITY = """
+<script>
+  window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+  window.si = window.si || function () { (window.siq = window.siq || []).push(arguments); };
+</script>
+<script defer src="/_vercel/insights/script.js"></script>
+<script defer src="/_vercel/speed-insights/script.js"></script>
+"""
+
+
 def split_hero_paragraphs(html_text: str) -> tuple[str, str]:
     parts = html_text.split("</p>")
     if len(parts) >= 3:
@@ -2636,6 +2667,7 @@ def build() -> None:
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>深入解读 Jev 模型：毫秒级判定与工程边界</title>
 <meta name="description" content="一线开发者对 Jev 与单步决策模型的拆解笔记。毫秒级判定、本地实测、失败模式与生产边界。">
+{VERCEL_OBSERVABILITY}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;700&family=Pathway+Gothic+One&display=swap" rel="stylesheet">
