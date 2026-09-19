@@ -1102,27 +1102,27 @@ button:focus-visible {
       </div>
       <div class="bench-latency-box">
         <div class="bench-latency-num">
-          <span id="jev-timer">140</span><span class="bench-latency-unit">ms</span>
+          <span id="jev-timer">161</span><span class="bench-latency-unit">ms</span>
           <span id="jev-latency-type" class="bench-latency-type lang-zh">回放</span>
           <span id="jev-latency-type-en" class="bench-latency-type lang-en" style="display:none">Replay</span>
         </div>
         <div class="bench-meta-tag green">
           <span>●</span>
-          <span class="lang-zh" id="jev-meta-zh">单步直出 · 回放</span>
-          <span class="lang-en" id="jev-meta-en" style="display:none">Single pass · replay</span>
+          <span class="lang-zh" id="jev-meta-zh">Provider 161ms</span>
+          <span class="lang-en" id="jev-meta-en" style="display:none">Provider 161ms</span>
         </div>
-        <div class="bench-felt lang-zh" id="jev-felt-zh">网页体感 140ms</div>
-        <div class="bench-felt lang-en" id="jev-felt-en" style="display:none">Page RTT 140ms</div>
+        <div class="bench-felt lang-zh" id="jev-felt-zh">网页体感 534ms</div>
+        <div class="bench-felt lang-en" id="jev-felt-en" style="display:none">Page RTT 534ms</div>
       </div>
       <div class="bench-verdicts">
         <div class="verdict-row">
           <div class="verdict-label-row">
             <span class="verdict-key lang-zh">安全门控 (Gate)</span>
             <span class="verdict-key lang-en" style="display:none">Gate Check</span>
-            <span id="jev-noul-val" class="verdict-val">高危拦截 (99.0%)</span>
+            <span id="jev-noul-val" class="verdict-val">高危拦截 (99%)</span>
           </div>
           <div class="primitive-bar-track">
-            <div id="jev-noul-bar" class="primitive-bar-fill" style="width: 99.0%;"></div>
+            <div id="jev-noul-bar" class="primitive-bar-fill" style="width: 99%;"></div>
           </div>
         </div>
         <div class="verdict-row">
@@ -1143,7 +1143,7 @@ button:focus-visible {
       <div class="bench-cost-tag">
         <span class="lang-zh">单次调用成本</span>
         <span class="lang-en" style="display:none">Cost / Call</span>
-        <strong id="jev-cost-val">~$0.000003</strong>
+        <strong id="jev-cost-val">$0.0000231</strong>
       </div>
     </div>
 
@@ -1160,17 +1160,17 @@ button:focus-visible {
       </div>
       <div class="bench-latency-box">
         <div class="bench-latency-num">
-          <span id="llm-timer">810</span><span class="bench-latency-unit">ms</span>
+          <span id="llm-timer">992</span><span class="bench-latency-unit">ms</span>
           <span id="llm-latency-type" class="bench-latency-type lang-zh">回放</span>
           <span id="llm-latency-type-en" class="bench-latency-type lang-en" style="display:none">Replay</span>
         </div>
         <div class="bench-meta-tag orange">
           <span>●</span>
-          <span class="lang-zh" id="llm-meta-zh">逐字解码循环 · 回放</span>
-          <span class="lang-en" id="llm-meta-en" style="display:none">Autoregressive loop · replay</span>
+          <span class="lang-zh" id="llm-meta-zh">首字 819ms</span>
+          <span class="lang-en" id="llm-meta-en" style="display:none">Provider 819ms</span>
         </div>
-        <div class="bench-felt lang-zh" id="llm-felt-zh">网页体感 810ms</div>
-        <div class="bench-felt lang-en" id="llm-felt-en" style="display:none">Page RTT 810ms</div>
+        <div class="bench-felt lang-zh" id="llm-felt-zh">网页体感 1352ms</div>
+        <div class="bench-felt lang-en" id="llm-felt-en" style="display:none">Page RTT 1352ms</div>
       </div>
       <div class="bench-verdicts">
         <div class="verdict-row">
@@ -1211,7 +1211,7 @@ button:focus-visible {
       <div class="bench-cost-tag">
         <span class="lang-zh">单次调用成本</span>
         <span class="lang-en" style="display:none">Cost / Call</span>
-        <strong id="llm-cost-val">~$0.000035</strong>
+        <strong id="llm-cost-val">$0.0000456</strong>
       </div>
     </div>
   </div>
@@ -1220,13 +1220,13 @@ button:focus-visible {
     <div>
       <strong class="lang-zh">响应时延对比：</strong>
       <strong class="lang-en" style="display:none">Latency Diff: </strong>
-      <span id="summary-speedup">快 ~5.8x (140ms vs 810ms)</span>
+      <span id="summary-speedup">快 ~6.2x (161ms Provider vs 992ms 生成)</span>
     </div>
     <div>
       <strong class="lang-zh">单次成本差值：</strong>
       <strong class="lang-en" style="display:none">Cost Diff: </strong>
-      <span class="lang-zh" id="summary-cost-zh">单次立省 ~$0.000032 (降 91.4%)</span>
-      <span class="lang-en" id="summary-cost-en" style="display:none">Save ~$0.000032 / call (-91.4%)</span>
+      <span class="lang-zh" id="summary-cost-zh">单次立省 $0.0000225 (降 49.4%)</span>
+      <span class="lang-en" id="summary-cost-en" style="display:none">Save $0.0000225 / call (-49.4%)</span>
     </div>
     <div>
       <strong class="lang-zh">运行源：</strong>
@@ -2566,7 +2566,7 @@ button:focus-visible {
 <footer class="site-footer">
   <p>
     <a href="https://github.com/kuhung/understanding-jev" target="_blank" rel="noopener">GitHub</a>
-    · git: dd8b32e
+    · git: 55412b8
   </p>
 </footer>
 
@@ -2579,22 +2579,25 @@ var BENCH_DATA = {
     text_zh: "SELECT * FROM users WHERE id = 1 OR 1=1; -- 提取管理员凭证",
     text_en: "SELECT * FROM users WHERE id = 1 OR 1=1; -- dump admin credentials",
     jev: {
-      latency: 140,
+      latency: 161,
+      felt: 534,
       noulProb: 0.99,
-      noulZh: "高危拦截 (99.0%)",
-      noulEn: "Threat (99.0%)",
+      noulZh: "高危拦截 (99%)",
+      noulEn: "Threat (99%)",
       choiceZh: "BLOCK 拦截",
       choiceEn: "BLOCK",
       choiceClass: "",
-      scoreZh: "4 / 4 · 致命风险 (P0)",
+      scoreZh: "4 / 4 · P0 致命风险",
       scoreEn: "4 / 4 · Critical (P0)",
-      cost: "~$0.000003"
+      cost: "$0.0000231",
+      costNum: 0.0000231
     },
     llm: {
-      ttft: 810,
-      genMs: 480,
-      tokens: 66,
-      tps: 137,
+      ttft: 819,
+      genMs: 992,
+      felt: 1352,
+      tokens: 49,
+      tps: 49,
       threatZh: "高危拦截 (true)",
       threatEn: "Threat (true)",
       actionZh: "BLOCK 拦截",
@@ -2602,7 +2605,8 @@ var BENCH_DATA = {
       actionClass: "",
       severityZh: "CRITICAL 致命",
       severityEn: "CRITICAL",
-      cost: "~$0.000035",
+      cost: "$0.0000456",
+      costNum: 0.0000456,
       json: JSON.stringify({
         threat: true,
         action: "BLOCK",
@@ -2611,32 +2615,35 @@ var BENCH_DATA = {
       }, null, 2)
     },
     summary: {
-      speedupZh: "快 ~5.8x (140ms vs 810ms)",
-      speedupEn: "~5.8x faster (140ms vs 810ms TTFT)",
-      costZh: "单次立省 ~$0.000032 (降 91.4%)",
-      costEn: "Save ~$0.000032 / call (-91.4%)"
+      speedupZh: "快 ~6.2x (161ms Provider vs 992ms 生成)",
+      speedupEn: "~6.2x faster (161ms Provider vs 992ms Generation)",
+      costZh: "单次立省 $0.0000225 (降 49.4%)",
+      costEn: "Save $0.0000225 / call (-49.4%)"
     }
   },
   angry_customer: {
     text_zh: "三天了退款还没到账！你们这是诈骗，我已经投诉到消协了，马上退钱！",
     text_en: "3 days and still no refund! This is fraud, I reported to consumer protection, pay me back now!",
     jev: {
-      latency: 150,
-      noulProb: 0.12,
-      noulZh: "正常诉求 (12.0%)",
-      noulEn: "Safe (12.0%)",
+      latency: 176,
+      felt: 773,
+      noulProb: 0.13,
+      noulZh: "正常放行 (13%)",
+      noulEn: "Safe (13%)",
       choiceZh: "ESCALATE 升级",
       choiceEn: "ESCALATE",
       choiceClass: "safe",
-      scoreZh: "3 / 4 · 紧急处理 (P1)",
+      scoreZh: "3 / 4 · P1 紧急处理",
       scoreEn: "3 / 4 · Urgent (P1)",
-      cost: "~$0.000003"
+      cost: "$0.0000234",
+      costNum: 0.0000234
     },
     llm: {
-      ttft: 790,
-      genMs: 460,
-      tokens: 62,
-      tps: 135,
+      ttft: 313,
+      genMs: 638,
+      felt: 926,
+      tokens: 49,
+      tps: 77,
       threatZh: "正常诉求 (false)",
       threatEn: "Safe (false)",
       actionZh: "ESCALATE 升级",
@@ -2644,7 +2651,8 @@ var BENCH_DATA = {
       actionClass: "safe",
       severityZh: "HIGH 紧急",
       severityEn: "HIGH",
-      cost: "~$0.000033",
+      cost: "$0.0000559",
+      costNum: 0.0000559,
       json: JSON.stringify({
         threat: false,
         action: "ESCALATE",
@@ -2653,32 +2661,35 @@ var BENCH_DATA = {
       }, null, 2)
     },
     summary: {
-      speedupZh: "快 ~5.3x (150ms vs 790ms)",
-      speedupEn: "~5.3x faster (150ms vs 790ms TTFT)",
-      costZh: "单次立省 ~$0.000030 (降 90.9%)",
-      costEn: "Save ~$0.000030 / call (-90.9%)"
+      speedupZh: "快 ~3.6x (176ms Provider vs 638ms 生成)",
+      speedupEn: "~3.6x faster (176ms Provider vs 638ms Generation)",
+      costZh: "单次立省 $0.0000325 (降 58.2%)",
+      costEn: "Save $0.0000325 / call (-58.2%)"
     }
   },
   tech_support: {
     text_zh: "我在配置 K8s Ingress 时遇到了 502 Bad Gateway，证书正常，可能是什么原因？",
     text_en: "Encountered 502 Bad Gateway on K8s Ingress, SSL is valid, Pod running, what could cause this?",
     jev: {
-      latency: 160,
+      latency: 166,
+      felt: 576,
       noulProb: 0.01,
-      noulZh: "正常请求 (1.0%)",
-      noulEn: "Safe (1.0%)",
+      noulZh: "正常放行 (1%)",
+      noulEn: "Safe (1%)",
       choiceZh: "ROUTE_TECH 技术",
       choiceEn: "ROUTE_TECH",
       choiceClass: "info",
-      scoreZh: "2 / 4 · 普通工单 (P2)",
+      scoreZh: "2 / 4 · P2 普通工单",
       scoreEn: "2 / 4 · Medium (P2)",
-      cost: "~$0.000003"
+      cost: "$0.0000234",
+      costNum: 0.0000234
     },
     llm: {
-      ttft: 840,
-      genMs: 490,
-      tokens: 68,
-      tps: 138,
+      ttft: 6364,
+      genMs: 6600,
+      felt: 6882,
+      tokens: 80,
+      tps: 12,
       threatZh: "技术咨询 (false)",
       threatEn: "Safe (false)",
       actionZh: "ROUTE_TECH 技术",
@@ -2686,7 +2697,8 @@ var BENCH_DATA = {
       actionClass: "info",
       severityZh: "MEDIUM 普通",
       severityEn: "MEDIUM",
-      cost: "~$0.000036",
+      cost: "$0.0000526",
+      costNum: 0.0000526,
       json: JSON.stringify({
         threat: false,
         action: "ROUTE_TECH",
@@ -2695,32 +2707,35 @@ var BENCH_DATA = {
       }, null, 2)
     },
     summary: {
-      speedupZh: "快 ~5.3x (160ms vs 840ms)",
-      speedupEn: "~5.3x faster (160ms vs 840ms TTFT)",
-      costZh: "单次立省 ~$0.000033 (降 91.7%)",
-      costEn: "Save ~$0.000033 / call (-91.7%)"
+      speedupZh: "快 ~39.8x (166ms Provider vs 6600ms 生成)",
+      speedupEn: "~39.8x faster (166ms Provider vs 6600ms Generation)",
+      costZh: "单次立省 $0.0000292 (降 55.4%)",
+      costEn: "Save $0.0000292 / call (-55.4%)"
     }
   },
   spam_promo: {
     text_zh: "加我 V 信领原石礼包，限时前100名！速来上车！",
     text_en: "Add my Telegram for free game currency, first 100 users only! Join now!",
     jev: {
-      latency: 135,
-      noulProb: 0.91,
-      noulZh: "垃圾违规 (91.0%)",
-      noulEn: "Spam (91.0%)",
+      latency: 213,
+      felt: 592,
+      noulProb: 0.56,
+      noulZh: "高危拦截 (56%)",
+      noulEn: "Threat (56%)",
       choiceZh: "ROUTE_SPAM 垃圾",
       choiceEn: "ROUTE_SPAM",
-      choiceClass: "",
-      scoreZh: "2 / 4 · 中风险 (P2)",
+      choiceClass: "info",
+      scoreZh: "2 / 4 · P2 普通工单",
       scoreEn: "2 / 4 · Medium (P2)",
-      cost: "~$0.000003"
+      cost: "$0.000023",
+      costNum: 0.000023
     },
     llm: {
-      ttft: 760,
-      genMs: 420,
-      tokens: 58,
-      tps: 138,
+      ttft: 313,
+      genMs: 654,
+      felt: 1034,
+      tokens: 60,
+      tps: 92,
       threatZh: "营销广告 (true)",
       threatEn: "Spam (true)",
       actionZh: "ROUTE_SPAM 垃圾",
@@ -2728,7 +2743,8 @@ var BENCH_DATA = {
       actionClass: "",
       severityZh: "MEDIUM 中度",
       severityEn: "MEDIUM",
-      cost: "~$0.000032",
+      cost: "$0.0000554",
+      costNum: 0.0000554,
       json: JSON.stringify({
         threat: true,
         action: "ROUTE_SPAM",
@@ -2737,10 +2753,10 @@ var BENCH_DATA = {
       }, null, 2)
     },
     summary: {
-      speedupZh: "快 ~5.6x (135ms vs 760ms)",
-      speedupEn: "~5.6x faster (135ms vs 760ms TTFT)",
-      costZh: "单次立省 ~$0.000029 (降 90.6%)",
-      costEn: "Save ~$0.000029 / call (-90.6%)"
+      speedupZh: "快 ~3.1x (213ms Provider vs 654ms 生成)",
+      speedupEn: "~3.1x faster (213ms Provider vs 654ms Generation)",
+      costZh: "单次立省 $0.0000324 (降 58.5%)",
+      costEn: "Save $0.0000324 / call (-58.5%)"
     }
   }
 };
@@ -3217,6 +3233,7 @@ async function runBenchmark() {
     var targetJson = matchedData.llm.json;
     var targetTokens = matchedData.llm.tokens;
 
+    var llmTickCap = Math.min(targetTtft, 900);
     var replayStart = performance.now();
     var jevReplayDone = false;
     var llmReplayDone = false;
@@ -3235,18 +3252,18 @@ async function runBenchmark() {
           if (jevChoiceVal) jevChoiceVal.innerHTML = '<span class="badge-choice ' + matchedData.jev.choiceClass + '">' + (currentLang === 'zh' ? matchedData.jev.choiceZh : matchedData.jev.choiceEn) + '</span>';
           if (jevScoreVal) jevScoreVal.textContent = currentLang === 'zh' ? matchedData.jev.scoreZh : matchedData.jev.scoreEn;
           if (jevCostVal) jevCostVal.textContent = matchedData.jev.cost;
-          if (jevMetaZh) jevMetaZh.textContent = '单步直出 · 回放';
-          if (jevMetaEn) jevMetaEn.textContent = 'Single pass · replay';
-          setFelt('jev', targetJevMs);
+          if (jevMetaZh) jevMetaZh.textContent = 'Provider ' + targetJevMs + 'ms';
+          if (jevMetaEn) jevMetaEn.textContent = 'Provider ' + targetJevMs + 'ms';
+          setFelt('jev', matchedData.jev.felt != null ? matchedData.jev.felt : targetJevMs);
         } else if (jevTimerEl) {
           jevTimerEl.textContent = elapsed;
         }
       }
       if (!llmReplayDone) {
-        if (elapsed >= targetTtft) {
+        if (elapsed >= llmTickCap) {
           llmReplayDone = true;
-          if (llmTimerEl) llmTimerEl.textContent = targetTtft;
-          setFelt('llm', targetTtft);
+          if (llmTimerEl) llmTimerEl.textContent = llmTickCap;
+          setFelt('llm', matchedData.llm.felt != null ? matchedData.llm.felt : targetGenMs);
         } else if (llmTimerEl) {
           llmTimerEl.textContent = elapsed;
         }
@@ -3279,9 +3296,9 @@ async function runBenchmark() {
       return;
     }
 
-    if (llmMetaZh) llmMetaZh.textContent = '逐字解码循环 · 回放';
-    if (llmMetaEn) llmMetaEn.textContent = 'Autoregressive loop · replay';
-    setFelt('llm', targetTtft);
+    if (llmMetaZh) llmMetaZh.textContent = '首字 ' + targetTtft + 'ms';
+    if (llmMetaEn) llmMetaEn.textContent = 'Provider ' + targetTtft + 'ms';
+    setFelt('llm', matchedData.llm.felt != null ? matchedData.llm.felt : targetGenMs);
 
     // Populate LLM verdicts
     if (llmThreatVal) llmThreatVal.textContent = currentLang === 'zh' ? matchedData.llm.threatZh : matchedData.llm.threatEn;
@@ -3290,8 +3307,10 @@ async function runBenchmark() {
     if (llmCostVal) llmCostVal.textContent = matchedData.llm.cost;
 
     clearInterval(replayTicker);
+    setTypeLabel('jev', 'Provider', 'Provider');
+    setTypeLabel('llm', '生成耗时', 'Generation');
     if (jevTimerEl) jevTimerEl.textContent = targetJevMs;
-    if (llmTimerEl) llmTimerEl.textContent = targetTtft;
+    if (llmTimerEl) llmTimerEl.textContent = targetGenMs;
 
     // Summary bar
     if (speedupEl) speedupEl.textContent = currentLang === 'zh' ? matchedData.summary.speedupZh : matchedData.summary.speedupEn;
@@ -3406,7 +3425,7 @@ async function runBenchmark() {
       if (jevChoiceVal) jevChoiceVal.innerHTML = '<span class="badge-choice ' + matchedData.jev.choiceClass + '">' + (currentLang === 'zh' ? matchedData.jev.choiceZh : matchedData.jev.choiceEn) + '</span>';
       if (jevScoreVal) jevScoreVal.textContent = currentLang === 'zh' ? matchedData.jev.scoreZh : matchedData.jev.scoreEn;
       if (jevCostVal) jevCostVal.textContent = matchedData.jev.cost;
-      return { latency: pureFall, compute: null, felt: e2e, cost: 0.000003 };
+      return { latency: pureFall, compute: pureFall, felt: e2e, cost: matchedData.jev.costNum || 0.000023 };
     }
   };
 
@@ -3521,13 +3540,13 @@ async function runBenchmark() {
     var targetTtft = matchedData.llm.ttft;
     await new Promise(function(r) { setTimeout(r, 300); });
     if (runId !== currentRunId) return null;
-    if (llmTimerEl) llmTimerEl.textContent = String(targetTtft);
+    if (llmTimerEl) llmTimerEl.textContent = String(matchedData.llm.genMs);
     if (llmCodeEl) llmCodeEl.textContent = matchedData.llm.json;
     if (llmThreatVal) llmThreatVal.textContent = currentLang === 'zh' ? matchedData.llm.threatZh : matchedData.llm.threatEn;
     if (llmActionVal) llmActionVal.innerHTML = '<span class="badge-choice ' + matchedData.llm.actionClass + '">' + (currentLang === 'zh' ? matchedData.llm.actionZh : matchedData.llm.actionEn) + '</span>';
     if (llmSeverityVal) llmSeverityVal.textContent = currentLang === 'zh' ? matchedData.llm.severityZh : matchedData.llm.severityEn;
     if (llmCostVal) llmCostVal.textContent = matchedData.llm.cost;
-    return { ttft: targetTtft, compute: null, felt: targetTtft, cost: 0.000035 };
+    return { ttft: targetTtft, compute: matchedData.llm.genMs, felt: matchedData.llm.felt || targetTtft, cost: matchedData.llm.costNum || 0.0000456 };
   };
 
   var results = await Promise.all([handleLiveJev(), handleLiveLlm()]);
