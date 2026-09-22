@@ -31,7 +31,7 @@ Jev 的核心定位是机器对机器的状态评估。它不回答用户提问�
 
 它的输出附带了置信度概率。很多开发者吃过大模型生成 JSON 时幻觉的苦头，大模型即使输出错误结果，也常常给出虚高的概率。Jev 宣称对置信度进行了校准，下游系统可以依据置信度设置阈值，一旦置信度偏低就由硬规则或人工接管。关于这个置信度是如何校准的，后文会详细展开。
 
-在工程调用上，TypeSafe AI 接入了 Cloudflare AI Gateway 基础设施。配合官方 `@ai-sdk/typesafe-ai` 适配层，核心代码通过 `experimental_evaluate` 声明判断原语即可：
+在工程调用上，TypeSafe AI 接入了 Cloudflare AI Gateway 与 Vercel 基础设施。配合官方 `@ai-sdk/typesafe-ai` 适配层，核心代码通过 `experimental_evaluate` 声明判断原语即可：
 
 ```tsx
 import { experimental_evaluate } from '@ai-sdk/typesafe-ai';

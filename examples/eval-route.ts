@@ -1,6 +1,6 @@
 /**
  * examples/eval-route.ts
- * 边缘网关上的 Jev choice 路由最小调用示例
+ * Cloudflare / Vercel 网关上的 Jev choice 路由最小调用示例
  */
 
 import { experimental_evaluate } from "@ai-sdk/typesafe-ai";
