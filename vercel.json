@@ -1,6 +1,6 @@
 {
   "framework": null,
   "installCommand": "echo skip",
-  "buildCommand": "mkdir -p dist && SHORT=$(printf '%s' \"${VERCEL_GIT_COMMIT_SHA:-unknown}\" | cut -c1-7) && sed \"s/git: [0-9a-f][0-9a-f]*/git: $SHORT/\" index.html > dist/index.html",
+  "buildCommand": "mkdir -p dist && cp sitemap.xml robots.txt dist/ 2>/dev/null || true && SHORT=$(printf '%s' \"${VERCEL_GIT_COMMIT_SHA:-unknown}\" | cut -c1-7) && sed \"s/git: [0-9a-f][0-9a-f]*/git: $SHORT/\" index.html > dist/index.html",
   "outputDirectory": "dist"
 }

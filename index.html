@@ -3,8 +3,39 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>深入解读 Jev 模型：毫秒级判定与工程边界</title>
-<meta name="description" content="一线开发者对 Jev 与单步决策模型的拆解笔记。毫秒级判定、本地实测、失败模式与生产边界。">
+<title>深入解读 Jev 模型：架构拆解、RLCD 原理与工程实测</title>
+<meta name="description" content="一线开发者拆解 Jev 单步决策模型：深入 RLCD 概率校准原理、Qwen 基座与生产架构设计，包含 20 行本地代码实测、开源生态复现及万次压测复盘。">
+<meta name="keywords" content="Jev, Jev模型, Jev架构, Jev原理, RLCD, Qwen-2.5-1B-RLCD, 单步决策模型, Jev开源, Jev使用, 本地部署, 毫秒级判定">
+<link rel="canonical" href="https://jev.kuhung.me/">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://jev.kuhung.me/">
+<meta property="og:title" content="深入解读 Jev 模型：架构拆解、RLCD 原理与工程实测">
+<meta property="og:description" content="一线开发者拆解 Jev 单步决策模型：深入 RLCD 概率校准原理、Qwen 基座与生产架构设计，包含 20 行本地代码实测、开源生态复现及万次压测复盘。">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="深入解读 Jev 模型：架构拆解、RLCD 原理与工程实测">
+<meta name="twitter:description" content="一线开发者拆解 Jev 单步决策模型：深入 RLCD 概率校准原理、Qwen 基座与生产架构设计，包含 20 行本地代码实测、开源生态复现及万次压测复盘。">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "深入解读 Jev 模型：架构拆解、RLCD 原理与工程实测",
+  "description": "一线开发者拆解 Jev 单步决策模型：深入 RLCD 概率校准原理、Qwen 基座与生产架构设计，包含 20 行本地代码实测、开源生态复现及万次压测复盘。",
+  "url": "https://jev.kuhung.me/",
+  "datePublished": "2026-09-18",
+  "dateModified": "2026-09-22",
+  "author": {
+    "@type": "Person",
+    "name": "kuhung",
+    "url": "https://kuhung.me"
+  },
+  "publisher": {
+    "@type": "Person",
+    "name": "kuhung"
+  },
+  "inLanguage": ["zh-CN", "en"],
+  "keywords": "Jev, Jev模型, Jev架构, Jev原理, RLCD, Qwen-2.5-1B-RLCD, 单步决策模型, Jev开源, 本地实测"
+}
+</script>
 
 <script>
   window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
@@ -2618,7 +2649,7 @@ button:focus-visible {
   <p>
     <a href="https://askjev.kuhung.me/" target="_blank" rel="noopener">Ask Jev Demo</a>
     · <a href="https://github.com/kuhung/understanding-jev" target="_blank" rel="noopener">GitHub</a>
-    · git: 4d3f799
+    · git: a80a711
   </p>
 </footer>
 
@@ -3669,8 +3700,8 @@ function switchLang(lang) {
   });
   document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
   document.title = lang === 'zh'
-    ? '深入解读 Jev 模型：毫秒级判定与工程边界'
-    : 'Reading Jev: Millisecond Decisions and Engineering Limits';
+    ? '深入解读 Jev 模型：架构拆解、RLCD 原理与工程实测'
+    : 'Reading Jev: Architecture, RLCD, and Engineering Limits';
 
   var input = document.getElementById('bench-input');
   if (input && activePresetKey && BENCH_DATA[activePresetKey]) {
