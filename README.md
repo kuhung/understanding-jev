@@ -6,7 +6,7 @@
 
 单页长文。拆 Jev 的单步判定、本地实测、失败模式和生产边界。
 
-线上页面可切中英：[understanding-jev.vercel.app](https://understanding-jev.vercel.app)
+线上页面可切中英：[jev.kuhung.me](https://jev.kuhung.me)
 
 - 在线 Demo：[askjev.kuhung.me](https://askjev.kuhung.me/)（用 Jev 辅助生活微决策的交互原型）
 - 仓库：[github.com/kuhung/understanding-jev](https://github.com/kuhung/understanding-jev)
@@ -26,7 +26,7 @@ python3 -m http.server 8765
 
 A single-page essay. Jev's one-step decisions, local tests, failure modes, and production limits.
 
-The live page can switch between Chinese and English: [understanding-jev.vercel.app](https://understanding-jev.vercel.app)
+The live page can switch between Chinese and English: [jev.kuhung.me](https://jev.kuhung.me)
 
 - Live Demo: [askjev.kuhung.me](https://askjev.kuhung.me/) (An interactive micro-decision prototype powered by Jev)
 - Repo: [github.com/kuhung/understanding-jev](https://github.com/kuhung/understanding-jev)

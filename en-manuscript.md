@@ -32,7 +32,7 @@ These primitives serve more than backend filters. They can drive user-facing mic
 
 Each output ships a confidence value. Many of us have watched LLMs emit wrong JSON with a smug probability. Jev says that confidence is calibrated. Downstream code can set a threshold and hand low-confidence cases to rules or humans. How that calibration is trained comes later.
 
-On the wiring side, TypeSafe AI sits on Cloudflare AI Gateway and Vercel. With `@ai-sdk/typesafe-ai`, the call is `experimental_evaluate`:
+On the wiring side, TypeSafe AI sits on Cloudflare AI Gateway infrastructure. With `@ai-sdk/typesafe-ai`, the call is `experimental_evaluate`:
 
 ```tsx
 import { experimental_evaluate } from '@ai-sdk/typesafe-ai';

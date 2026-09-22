@@ -24,7 +24,7 @@ Jev 的核心定位是机器对机器的状态评估。它不回答用户提问�
 
 它的输出附带了置信度概率。很多开发者吃过大模型生成 JSON 时幻觉的苦头，大模型即使输出错误结果，也常常给出虚高的概率。Jev 宣称对置信度进行了校准，下游系统可以依据置信度设置阈值，一旦置信度偏低就由硬规则或人工接管。关于这个置信度是如何校准的，后文会详细展开。
 
-在工程调用上，TypeSafe AI 接入了 Cloudflare AI Gateway 与 Vercel 基础设施。配合官方 `@ai-sdk/typesafe-ai` 适配层，核心代码通过 `experimental_evaluate` 声明判断原语即可：
+在工程调用上，TypeSafe AI 接入了 Cloudflare AI Gateway 基础设施。配合官方 `@ai-sdk/typesafe-ai` 适配层，核心代码通过 `experimental_evaluate` 声明判断原语即可：
 
 ```tsx
 import { experimental_evaluate } from '@ai-sdk/typesafe-ai';
@@ -63,7 +63,7 @@ These primitives serve more than backend filters. They can drive user-facing mic
 
 Each output ships a confidence value. Many of us have watched LLMs emit wrong JSON with a smug probability. Jev says that confidence is calibrated. Downstream code can set a threshold and hand low-confidence cases to rules or humans. How that calibration is trained comes later.
 
-On the wiring side, TypeSafe AI sits on Cloudflare AI Gateway and Vercel. With `@ai-sdk/typesafe-ai`, the call is `experimental_evaluate`:
+On the wiring side, TypeSafe AI sits on Cloudflare AI Gateway infrastructure. With `@ai-sdk/typesafe-ai`, the call is `experimental_evaluate`:
 
 ```tsx
 import { experimental_evaluate } from '@ai-sdk/typesafe-ai';
