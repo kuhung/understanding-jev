@@ -28,6 +28,8 @@ To go fast, Jev drops text generation and keeps three primitives:
 2. `score`: score on an ordered discrete scale, such as 0 to 10.
 3. `noul`: binary classification probability (boolean decision, e.g., true/false or yes/no).
 
+These primitives serve more than backend filters. They can drive user-facing micro-decisions. In [Ask Jev](https://askjev.kuhung.me/), everyday dilemmas like 'buy or pass' (noul), 'what to eat' (choice), and 'impulse rating' (score) map straight to single-step primitives for millisecond verdicts.
+
 Each output ships a confidence value. Many of us have watched LLMs emit wrong JSON with a smug probability. Jev says that confidence is calibrated. Downstream code can set a threshold and hand low-confidence cases to rules or humans. How that calibration is trained comes later.
 
 On the wiring side, TypeSafe AI sits on Cloudflare AI Gateway and Vercel. With `@ai-sdk/typesafe-ai`, the call is `experimental_evaluate`:
@@ -339,6 +341,7 @@ After launch, the community reproduced and forked the idea across sizes, from te
 | [TheoLeeCJ/openjev](https://github.com/TheoLeeCJ/openjev) ([openjev.com](http://openjev.com)) | MiniCPM5-2B-GGUF | In-browser WebGPU, no backend |
 | [vinnylarouge/jevlike](https://github.com/vinnylarouge/jevlike) | Tiny byte encoder | Cross-attention to cut option interference |
 | [DavidHatley/system-one-mini](https://github.com/DavidHatley/system-one-mini) | Custom compact net | About 69M params, single-step reflex on little compute |
+| [Ask Jev](https://askjev.kuhung.me/) ([kuhung/ask-jev](https://github.com/kuhung/ask-jev)) | TypeSafe Jev | Everyday micro-decision demo showcasing choice, score, and noul primitives |
 
 Where people actually put it:
 
@@ -346,6 +349,7 @@ Where people actually put it:
 2. **Security gateway**: `pi-warden` checks permission before an agent runs a command.
 3. **Semantic routing**: `jev-router` grades difficulty at ingress and splits models.
 4. **Game control**: `lukaske/jev-doom-agent` drives DOOM movement at millisecond latency.
+5. **Everyday micro-decisions**: such as [Ask Jev](https://askjev.kuhung.me/), using choice, score, and noul to resolve daily decision dilemmas.
 
 # Should You Use It
 
@@ -404,3 +408,4 @@ If you have almost no labels, run the product on a general LLM with few-shot pro
 - [browser-use/jev-ultrafast](https://github.com/browser-use/jev-ultrafast) - browser automation
 - [droidrun/mobile-jev](https://github.com/droidrun/mobile-jev) - mobile agent
 - [DevMortimer/pi-warden](https://github.com/DevMortimer/pi-warden) - command guard
+- [Ask Jev](https://askjev.kuhung.me/) - interactive everyday micro-decision demo powered by Jev

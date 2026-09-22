@@ -925,6 +925,25 @@ button:focus-visible {
   align-items: center;
 }
 
+.bench-demo-callout {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.6;
+}
+.bench-demo-callout a {
+  color: var(--link);
+  text-decoration: none;
+  font-weight: 500;
+}
+.bench-demo-callout a:hover {
+  text-decoration: underline;
+}
+
 @media (max-width: 760px) {
   .interactive-bench { padding: 16px; }
   .bench-grid { grid-template-columns: 1fr; }
@@ -955,6 +974,8 @@ button:focus-visible {
   <p class="byline lang-zh">
     撰写 <a href="https://kuhung.me" target="_blank" rel="noopener">kuhung</a>
     <span class="sep">·</span>
+    <a href="https://askjev.kuhung.me/" target="_blank" rel="noopener">在线 Demo</a>
+    <span class="sep">·</span>
     <a href="https://github.com/kuhung/understanding-jev" target="_blank" rel="noopener">GitHub</a>
     <span class="sep">·</span>
     <button type="button" class="is-active" data-lang="zh" aria-pressed="true" onclick="switchLang('zh')">中文</button>
@@ -963,6 +984,8 @@ button:focus-visible {
   </p>
   <p class="byline lang-en" style="display:none">
     Written by <a href="https://kuhung.me" target="_blank" rel="noopener">kuhung</a>
+    <span class="sep">·</span>
+    <a href="https://askjev.kuhung.me/" target="_blank" rel="noopener">Live Demo</a>
     <span class="sep">·</span>
     <a href="https://github.com/kuhung/understanding-jev" target="_blank" rel="noopener">GitHub</a>
     <span class="sep">·</span>
@@ -1243,6 +1266,10 @@ button:focus-visible {
       <span id="summary-source-en" class="lang-en" style="display:none">Trace Replay (Gemini 2.5 Flash-Lite)</span>
     </div>
   </div>
+  <div class="bench-demo-callout">
+    <span class="lang-zh">微决策实测：体验基于 Jev 原语的生活微决策 Demo <a href="https://askjev.kuhung.me/" target="_blank" rel="noopener">问问Jev (Ask Jev) ↗</a>（买不买、吃什么、冲动打分）</span>
+    <span class="lang-en" style="display:none">Interactive demo: explore everyday micro-decisions powered by Jev at <a href="https://askjev.kuhung.me/" target="_blank" rel="noopener">Ask Jev ↗</a> (buy or pass, meal picks, impulse scores).</span>
+  </div>
 </section>
 
 
@@ -1309,6 +1336,7 @@ button:focus-visible {
 1. <code>choice</code>：在给定的枚举列表中完成多选一路由。
 2. <code>score</code>：在有序离散区间内打分（如 0 到 10 的数值评分）。
 3. <code>noul</code>：输出二分类概率（布尔判断，如 true / false 或 yes / no）。</p>
+<p>这三种原语不仅适用于服务端拦截，也能直接支撑日常人机交互。在生活微决策 Demo <a href="https://askjev.kuhung.me/">Ask Jev</a> 中，日常纠结的“买不买”（noul 二分类）、“中午吃什么”（choice 枚举多选）以及“冲动消费评级”（score 离散打分），直接映射到对应的单步原语上，由模型在几十毫秒内完成状态判别。</p>
 <p>它的输出附带了置信度概率。很多开发者吃过大模型生成 JSON 时幻觉的苦头，大模型即使输出错误结果，也常常给出虚高的概率。Jev 宣称对置信度进行了校准，下游系统可以依据置信度设置阈值，一旦置信度偏低就由硬规则或人工接管。关于这个置信度是如何校准的，后文会详细展开。</p>
 <p>在工程调用上，TypeSafe AI 接入了 Cloudflare AI Gateway 与 Vercel 基础设施。配合官方 <code>@ai-sdk/typesafe-ai</code> 适配层，核心代码通过 <code>experimental_evaluate</code> 声明判断原语即可：</p>
 <div class="codehilite"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">experimental_evaluate</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">'@ai-sdk/typesafe-ai'</span><span class="p">;</span>
@@ -1354,6 +1382,7 @@ button:focus-visible {
 <li><code>score</code>: score on an ordered discrete scale, such as 0 to 10.</li>
 <li><code>noul</code>: binary classification probability (boolean decision, e.g., true/false or yes/no).</li>
 </ol>
+<p>These primitives serve more than backend filters. They can drive user-facing micro-decisions. In <a href="https://askjev.kuhung.me/">Ask Jev</a>, everyday dilemmas like 'buy or pass' (noul), 'what to eat' (choice), and 'impulse rating' (score) map straight to single-step primitives for millisecond verdicts.</p>
 <p>Each output ships a confidence value. Many of us have watched LLMs emit wrong JSON with a smug probability. Jev says that confidence is calibrated. Downstream code can set a threshold and hand low-confidence cases to rules or humans. How that calibration is trained comes later.</p>
 <p>On the wiring side, TypeSafe AI sits on Cloudflare AI Gateway and Vercel. With <code>@ai-sdk/typesafe-ai</code>, the call is <code>experimental_evaluate</code>:</p>
 <div class="codehilite"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">experimental_evaluate</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">'@ai-sdk/typesafe-ai'</span><span class="p">;</span>
@@ -2298,13 +2327,19 @@ button:focus-visible {
 <td>自研紧凑网络</td>
 <td>约 69M 参数量，验证低算力下的单步反射能力</td>
 </tr>
+<tr>
+<td><a href="https://askjev.kuhung.me/">Ask Jev</a> (<a href="https://github.com/kuhung/ask-jev">kuhung/ask-jev</a>)</td>
+<td>TypeSafe Jev</td>
+<td>面向日常微决策的交互 Demo，演示 choice / score / noul 原语应用</td>
+</tr>
 </tbody>
 </table>
 <p>在具体应用场景上，社区主要集中在以下方向：
 1. <strong>GUI 自动化</strong>：如 <code>browser-use/jev-ultrafast</code> 与 <code>droidrun/mobile-jev</code>，将屏幕状态判定与动作选择交给单步决策，仅在需要生成长文本时调用生成模型。
 2. <strong>安全网关</strong>：如 <code>pi-warden</code>，在 Agent 调用命令前做权限判定。
 3. <strong>语义路由</strong>：如 <code>jev-router</code>，在入口甄别任务难度并做模型分流。
-4. <strong>游戏微操</strong>：如 <code>lukaske/jev-doom-agent</code>，利用毫秒级响应接管 DOOM 的实时走位。</p></div>
+4. <strong>游戏微操</strong>：如 <code>lukaske/jev-doom-agent</code>，利用毫秒级响应接管 DOOM 的实时走位。
+5. <strong>日常微决策</strong>：如 <a href="https://askjev.kuhung.me/">Ask Jev</a>，将 choice、score、noul 三大原语应用在纠结选型的日常判断场景。</p></div>
   <div class="lang-en" style="display:none"><p>After launch, the community reproduced and forked the idea across sizes, from tens of millions of parameters to tens of billions.</p>
 <table>
 <thead>
@@ -2350,6 +2385,11 @@ button:focus-visible {
 <td>Custom compact net</td>
 <td>About 69M params, single-step reflex on little compute</td>
 </tr>
+<tr>
+<td><a href="https://askjev.kuhung.me/">Ask Jev</a> (<a href="https://github.com/kuhung/ask-jev">kuhung/ask-jev</a>)</td>
+<td>TypeSafe Jev</td>
+<td>Everyday micro-decision demo showcasing choice, score, and noul primitives</td>
+</tr>
 </tbody>
 </table>
 <p>Where people actually put it:</p>
@@ -2358,6 +2398,7 @@ button:focus-visible {
 <li><strong>Security gateway</strong>: <code>pi-warden</code> checks permission before an agent runs a command.</li>
 <li><strong>Semantic routing</strong>: <code>jev-router</code> grades difficulty at ingress and splits models.</li>
 <li><strong>Game control</strong>: <code>lukaske/jev-doom-agent</code> drives DOOM movement at millisecond latency.</li>
+<li><strong>Everyday micro-decisions</strong>: such as <a href="https://askjev.kuhung.me/">Ask Jev</a>, using choice, score, and noul to resolve daily decision dilemmas.</li>
 </ol></div>
 </div>
 </section>
@@ -2469,6 +2510,7 @@ button:focus-visible {
 <li><a href="https://github.com/browser-use/jev-ultrafast">browser-use/jev-ultrafast</a> - 浏览器自动化实验</li>
 <li><a href="https://github.com/droidrun/mobile-jev">droidrun/mobile-jev</a> - 移动端 Agent 实验</li>
 <li><a href="https://github.com/DevMortimer/pi-warden">DevMortimer/pi-warden</a> - 命令守卫网关</li>
+<li><a href="https://askjev.kuhung.me/">Ask Jev (问问Jev)</a> - 基于 Jev 原语的生活微决策交互 Demo</li>
 </ul></div>
   <div class="lang-en" style="display:none"><p>When you design the architecture, first decide whether the job needs fast instinct or slow causal work. Many systems spin a tens-of-billions model to emit one enum. That is a compute mismatch.</p>
 <h3 id="ch09-should-you-use-it-en-four-questions">Four questions</h3>
@@ -2563,6 +2605,7 @@ button:focus-visible {
 <li><a href="https://github.com/browser-use/jev-ultrafast">browser-use/jev-ultrafast</a> - browser automation</li>
 <li><a href="https://github.com/droidrun/mobile-jev">droidrun/mobile-jev</a> - mobile agent</li>
 <li><a href="https://github.com/DevMortimer/pi-warden">DevMortimer/pi-warden</a> - command guard</li>
+<li><a href="https://askjev.kuhung.me/">Ask Jev</a> - interactive everyday micro-decision demo powered by Jev</li>
 </ul></div>
 </div>
 </section>
@@ -2573,8 +2616,9 @@ button:focus-visible {
 
 <footer class="site-footer">
   <p>
-    <a href="https://github.com/kuhung/understanding-jev" target="_blank" rel="noopener">GitHub</a>
-    · git: 4ee091f
+    <a href="https://askjev.kuhung.me/" target="_blank" rel="noopener">Ask Jev Demo</a>
+    · <a href="https://github.com/kuhung/understanding-jev" target="_blank" rel="noopener">GitHub</a>
+    · git: 337b9d7
   </p>
 </footer>
 

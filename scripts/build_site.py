@@ -1202,6 +1202,25 @@ BENCHMARK_CSS = """
   align-items: center;
 }
 
+.bench-demo-callout {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.6;
+}
+.bench-demo-callout a {
+  color: var(--link);
+  text-decoration: none;
+  font-weight: 500;
+}
+.bench-demo-callout a:hover {
+  text-decoration: underline;
+}
+
 @media (max-width: 760px) {
   .interactive-bench { padding: 16px; }
   .bench-grid { grid-template-columns: 1fr; }
@@ -1474,6 +1493,10 @@ BENCHMARK_HTML = """
       <span id="summary-source-zh" class="lang-zh">真机基准回放 (Gemini 2.5 Flash-Lite)</span>
       <span id="summary-source-en" class="lang-en" style="display:none">Trace Replay (Gemini 2.5 Flash-Lite)</span>
     </div>
+  </div>
+  <div class="bench-demo-callout">
+    <span class="lang-zh">微决策实测：体验基于 Jev 原语的生活微决策 Demo <a href="https://askjev.kuhung.me/" target="_blank" rel="noopener">问问Jev (Ask Jev) ↗</a>（买不买、吃什么、冲动打分）</span>
+    <span class="lang-en" style="display:none">Interactive demo: explore everyday micro-decisions powered by Jev at <a href="https://askjev.kuhung.me/" target="_blank" rel="noopener">Ask Jev ↗</a> (buy or pass, meal picks, impulse scores).</span>
   </div>
 </section>
 """
@@ -2694,6 +2717,8 @@ def build() -> None:
   <p class="byline lang-zh">
     撰写 <a href="https://kuhung.me" target="_blank" rel="noopener">kuhung</a>
     <span class="sep">·</span>
+    <a href="https://askjev.kuhung.me/" target="_blank" rel="noopener">在线 Demo</a>
+    <span class="sep">·</span>
     <a href="https://github.com/kuhung/understanding-jev" target="_blank" rel="noopener">GitHub</a>
     <span class="sep">·</span>
     <button type="button" class="is-active" data-lang="zh" aria-pressed="true" onclick="switchLang('zh')">中文</button>
@@ -2702,6 +2727,8 @@ def build() -> None:
   </p>
   <p class="byline lang-en" style="display:none">
     Written by <a href="https://kuhung.me" target="_blank" rel="noopener">kuhung</a>
+    <span class="sep">·</span>
+    <a href="https://askjev.kuhung.me/" target="_blank" rel="noopener">Live Demo</a>
     <span class="sep">·</span>
     <a href="https://github.com/kuhung/understanding-jev" target="_blank" rel="noopener">GitHub</a>
     <span class="sep">·</span>
@@ -2732,7 +2759,8 @@ def build() -> None:
 
 <footer class="site-footer">
   <p>
-    <a href="https://github.com/kuhung/understanding-jev" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://askjev.kuhung.me/" target="_blank" rel="noopener">Ask Jev Demo</a>
+    · <a href="https://github.com/kuhung/understanding-jev" target="_blank" rel="noopener">GitHub</a>
     · git: {sha}
   </p>
 </footer>

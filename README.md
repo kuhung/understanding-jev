@@ -8,6 +8,7 @@
 
 线上页面可切中英：[understanding-jev.vercel.app](https://understanding-jev.vercel.app)
 
+- 在线 Demo：[askjev.kuhung.me](https://askjev.kuhung.me/)（用 Jev 辅助生活微决策的交互原型）
 - 仓库：[github.com/kuhung/understanding-jev](https://github.com/kuhung/understanding-jev)
 
 ### 本地预览
@@ -27,6 +28,7 @@ A single-page essay. Jev's one-step decisions, local tests, failure modes, and p
 
 The live page can switch between Chinese and English: [understanding-jev.vercel.app](https://understanding-jev.vercel.app)
 
+- Live Demo: [askjev.kuhung.me](https://askjev.kuhung.me/) (An interactive micro-decision prototype powered by Jev)
 - Repo: [github.com/kuhung/understanding-jev](https://github.com/kuhung/understanding-jev)
 
 ### Local preview

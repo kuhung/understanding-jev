@@ -27,6 +27,8 @@ Jev 的核心定位是机器对机器的状态评估。它不回答用户提问�
 2. `score`：在有序离散区间内打分（如 0 到 10 的数值评分）。
 3. `noul`：输出二分类概率（布尔判断，如 true / false 或 yes / no）。
 
+这三种原语不仅适用于服务端拦截，也能直接支撑日常人机交互。在生活微决策 Demo [Ask Jev](https://askjev.kuhung.me/) 中，日常纠结的“买不买”（noul 二分类）、“中午吃什么”（choice 枚举多选）以及“冲动消费评级”（score 离散打分），直接映射到对应的单步原语上，由模型在几十毫秒内完成状态判别。
+
 它的输出附带了置信度概率。很多开发者吃过大模型生成 JSON 时幻觉的苦头，大模型即使输出错误结果，也常常给出虚高的概率。Jev 宣称对置信度进行了校准，下游系统可以依据置信度设置阈值，一旦置信度偏低就由硬规则或人工接管。关于这个置信度是如何校准的，后文会详细展开。
 
 在工程调用上，TypeSafe AI 接入了 Cloudflare AI Gateway 与 Vercel 基础设施。配合官方 `@ai-sdk/typesafe-ai` 适配层，核心代码通过 `experimental_evaluate` 声明判断原语即可：
@@ -337,12 +339,14 @@ Jev 发布后，开源社区迅速展开了多维度的复现与改造。从几�
 | [TheoLeeCJ/openjev](https://github.com/TheoLeeCJ/openjev) ([openjev.com](http://openjev.com)) | MiniCPM5-2B-GGUF     | 浏览器端纯本地 WebGPU 运行，无需后端服务                     |
 | [vinnylarouge/jevlike](https://github.com/vinnylarouge/jevlike) | 微型字节编码器       | 采用交叉注意力解耦选项间干扰                                 |
 | [DavidHatley/system-one-mini](https://github.com/DavidHatley/system-one-mini) | 自研紧凑网络         | 约 69M 参数量，验证低算力下的单步反射能力                    |
+| [Ask Jev](https://askjev.kuhung.me/) ([kuhung/ask-jev](https://github.com/kuhung/ask-jev)) | TypeSafe Jev | 面向日常微决策的交互 Demo，演示 choice / score / noul 原语应用 |
 
 在具体应用场景上，社区主要集中在以下方向：
 1. **GUI 自动化**：如 `browser-use/jev-ultrafast` 与 `droidrun/mobile-jev`，将屏幕状态判定与动作选择交给单步决策，仅在需要生成长文本时调用生成模型。
 2. **安全网关**：如 `pi-warden`，在 Agent 调用命令前做权限判定。
 3. **语义路由**：如 `jev-router`，在入口甄别任务难度并做模型分流。
 4. **游戏微操**：如 `lukaske/jev-doom-agent`，利用毫秒级响应接管 DOOM 的实时走位。
+5. **日常微决策**：如 [Ask Jev](https://askjev.kuhung.me/)，将 choice、score、noul 三大原语应用在纠结选型的日常判断场景。
 
 # 该不该用
 
@@ -399,3 +403,4 @@ Jev 发布后，开源社区迅速展开了多维度的复现与改造。从几�
 - [browser-use/jev-ultrafast](https://github.com/browser-use/jev-ultrafast) - 浏览器自动化实验
 - [droidrun/mobile-jev](https://github.com/droidrun/mobile-jev) - 移动端 Agent 实验
 - [DevMortimer/pi-warden](https://github.com/DevMortimer/pi-warden) - 命令守卫网关
+- [Ask Jev (问问Jev)](https://askjev.kuhung.me/) - 基于 Jev 原语的生活微决策交互 Demo

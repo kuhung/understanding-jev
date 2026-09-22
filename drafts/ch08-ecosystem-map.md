@@ -12,12 +12,14 @@ Jev 发布后，开源社区迅速展开了多维度的复现与改造。从几�
 | [TheoLeeCJ/openjev](https://github.com/TheoLeeCJ/openjev) ([openjev.com](http://openjev.com)) | MiniCPM5-2B-GGUF     | 浏览器端纯本地 WebGPU 运行，无需后端服务                     |
 | [vinnylarouge/jevlike](https://github.com/vinnylarouge/jevlike) | 微型字节编码器       | 采用交叉注意力解耦选项间干扰                                 |
 | [DavidHatley/system-one-mini](https://github.com/DavidHatley/system-one-mini) | 自研紧凑网络         | 约 69M 参数量，验证低算力下的单步反射能力                    |
+| [Ask Jev](https://askjev.kuhung.me/) ([kuhung/ask-jev](https://github.com/kuhung/ask-jev)) | TypeSafe Jev | 面向日常微决策的交互 Demo，演示 choice / score / noul 原语应用 |
 
 在具体应用场景上，社区主要集中在以下方向：
 1. **GUI 自动化**：如 `browser-use/jev-ultrafast` 与 `droidrun/mobile-jev`，将屏幕状态判定与动作选择交给单步决策，仅在需要生成长文本时调用生成模型。
 2. **安全网关**：如 `pi-warden`，在 Agent 调用命令前做权限判定。
 3. **语义路由**：如 `jev-router`，在入口甄别任务难度并做模型分流。
 4. **游戏微操**：如 `lukaske/jev-doom-agent`，利用毫秒级响应接管 DOOM 的实时走位。
+5. **日常微决策**：如 [Ask Jev](https://askjev.kuhung.me/)，将 choice、score、noul 三大原语应用在纠结选型的日常判断场景。
 
 <!-- lang:en -->
 After launch, the community reproduced and forked the idea across sizes, from tens of millions of parameters to tens of billions.
@@ -31,6 +33,7 @@ After launch, the community reproduced and forked the idea across sizes, from te
 | [TheoLeeCJ/openjev](https://github.com/TheoLeeCJ/openjev) ([openjev.com](http://openjev.com)) | MiniCPM5-2B-GGUF | In-browser WebGPU, no backend |
 | [vinnylarouge/jevlike](https://github.com/vinnylarouge/jevlike) | Tiny byte encoder | Cross-attention to cut option interference |
 | [DavidHatley/system-one-mini](https://github.com/DavidHatley/system-one-mini) | Custom compact net | About 69M params, single-step reflex on little compute |
+| [Ask Jev](https://askjev.kuhung.me/) ([kuhung/ask-jev](https://github.com/kuhung/ask-jev)) | TypeSafe Jev | Everyday micro-decision demo showcasing choice, score, and noul primitives |
 
 Where people actually put it:
 
@@ -38,3 +41,4 @@ Where people actually put it:
 2. **Security gateway**: `pi-warden` checks permission before an agent runs a command.
 3. **Semantic routing**: `jev-router` grades difficulty at ingress and splits models.
 4. **Game control**: `lukaske/jev-doom-agent` drives DOOM movement at millisecond latency.
+5. **Everyday micro-decisions**: such as [Ask Jev](https://askjev.kuhung.me/), using choice, score, and noul to resolve daily decision dilemmas.

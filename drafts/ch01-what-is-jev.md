@@ -20,6 +20,8 @@ Jev 的核心定位是机器对机器的状态评估。它不回答用户提问�
 2. `score`：在有序离散区间内打分（如 0 到 10 的数值评分）。
 3. `noul`：输出二分类概率（布尔判断，如 true / false 或 yes / no）。
 
+这三种原语不仅适用于服务端拦截，也能直接支撑日常人机交互。在生活微决策 Demo [Ask Jev](https://askjev.kuhung.me/) 中，日常纠结的“买不买”（noul 二分类）、“中午吃什么”（choice 枚举多选）以及“冲动消费评级”（score 离散打分），直接映射到对应的单步原语上，由模型在几十毫秒内完成状态判别。
+
 它的输出附带了置信度概率。很多开发者吃过大模型生成 JSON 时幻觉的苦头，大模型即使输出错误结果，也常常给出虚高的概率。Jev 宣称对置信度进行了校准，下游系统可以依据置信度设置阈值，一旦置信度偏低就由硬规则或人工接管。关于这个置信度是如何校准的，后文会详细展开。
 
 在工程调用上，TypeSafe AI 接入了 Cloudflare AI Gateway 与 Vercel 基础设施。配合官方 `@ai-sdk/typesafe-ai` 适配层，核心代码通过 `experimental_evaluate` 声明判断原语即可：
@@ -56,6 +58,8 @@ To go fast, Jev drops text generation and keeps three primitives:
 1. `choice`: pick one option from an enum list.
 2. `score`: score on an ordered discrete scale, such as 0 to 10.
 3. `noul`: binary classification probability (boolean decision, e.g., true/false or yes/no).
+
+These primitives serve more than backend filters. They can drive user-facing micro-decisions. In [Ask Jev](https://askjev.kuhung.me/), everyday dilemmas like 'buy or pass' (noul), 'what to eat' (choice), and 'impulse rating' (score) map straight to single-step primitives for millisecond verdicts.
 
 Each output ships a confidence value. Many of us have watched LLMs emit wrong JSON with a smug probability. Jev says that confidence is calibrated. Downstream code can set a threshold and hand low-confidence cases to rules or humans. How that calibration is trained comes later.
 

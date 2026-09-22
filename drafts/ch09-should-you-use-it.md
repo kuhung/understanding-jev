@@ -54,6 +54,7 @@
 - [browser-use/jev-ultrafast](https://github.com/browser-use/jev-ultrafast) - 浏览器自动化实验
 - [droidrun/mobile-jev](https://github.com/droidrun/mobile-jev) - 移动端 Agent 实验
 - [DevMortimer/pi-warden](https://github.com/DevMortimer/pi-warden) - 命令守卫网关
+- [Ask Jev (问问Jev)](https://askjev.kuhung.me/) - 基于 Jev 原语的生活微决策交互 Demo
 
 <!-- lang:en -->
 When you design the architecture, first decide whether the job needs fast instinct or slow causal work. Many systems spin a tens-of-billions model to emit one enum. That is a compute mismatch.
@@ -111,3 +112,4 @@ If you have almost no labels, run the product on a general LLM with few-shot pro
 - [browser-use/jev-ultrafast](https://github.com/browser-use/jev-ultrafast) - browser automation
 - [droidrun/mobile-jev](https://github.com/droidrun/mobile-jev) - mobile agent
 - [DevMortimer/pi-warden](https://github.com/DevMortimer/pi-warden) - command guard
+- [Ask Jev](https://askjev.kuhung.me/) - interactive everyday micro-decision demo powered by Jev
