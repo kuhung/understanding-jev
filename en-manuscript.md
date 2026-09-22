@@ -26,7 +26,7 @@ To go fast, Jev drops text generation and keeps three primitives:
 
 1. `choice`: pick one option from an enum list.
 2. `score`: score on an ordered discrete scale, such as 0 to 10.
-3. `noul`: a three-way boolean, true, false, or unknown.
+3. `noul`: binary classification probability (boolean decision, e.g., true/false or yes/no).
 
 Each output ships a confidence value. Many of us have watched LLMs emit wrong JSON with a smug probability. Jev says that confidence is calibrated. Downstream code can set a threshold and hand low-confidence cases to rules or humans. How that calibration is trained comes later.
 

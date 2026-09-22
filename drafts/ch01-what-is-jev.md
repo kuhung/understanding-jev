@@ -18,7 +18,7 @@ Jev 的核心定位是机器对机器的状态评估。它不回答用户提问�
 为了追求速度，Jev 舍弃了文本生成，只保留三种输出原语：
 1. `choice`：在给定的枚举列表中完成多选一路由。
 2. `score`：在有序离散区间内打分（如 0 到 10 的数值评分）。
-3. `noul`：输出三值布尔概率（true、false、unknown）。
+3. `noul`：输出二分类概率（布尔判断，如 true / false 或 yes / no）。
 
 它的输出附带了置信度概率。很多开发者吃过大模型生成 JSON 时幻觉的苦头，大模型即使输出错误结果，也常常给出虚高的概率。Jev 宣称对置信度进行了校准，下游系统可以依据置信度设置阈值，一旦置信度偏低就由硬规则或人工接管。关于这个置信度是如何校准的，后文会详细展开。
 
@@ -55,7 +55,7 @@ To go fast, Jev drops text generation and keeps three primitives:
 
 1. `choice`: pick one option from an enum list.
 2. `score`: score on an ordered discrete scale, such as 0 to 10.
-3. `noul`: a three-way boolean, true, false, or unknown.
+3. `noul`: binary classification probability (boolean decision, e.g., true/false or yes/no).
 
 Each output ships a confidence value. Many of us have watched LLMs emit wrong JSON with a smug probability. Jev says that confidence is calibrated. Downstream code can set a threshold and hand low-confidence cases to rules or humans. How that calibration is trained comes later.
 

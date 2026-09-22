@@ -1308,7 +1308,7 @@ button:focus-visible {
 <p>为了追求速度，Jev 舍弃了文本生成，只保留三种输出原语：
 1. <code>choice</code>：在给定的枚举列表中完成多选一路由。
 2. <code>score</code>：在有序离散区间内打分（如 0 到 10 的数值评分）。
-3. <code>noul</code>：输出三值布尔概率（true、false、unknown）。</p>
+3. <code>noul</code>：输出二分类概率（布尔判断，如 true / false 或 yes / no）。</p>
 <p>它的输出附带了置信度概率。很多开发者吃过大模型生成 JSON 时幻觉的苦头，大模型即使输出错误结果，也常常给出虚高的概率。Jev 宣称对置信度进行了校准，下游系统可以依据置信度设置阈值，一旦置信度偏低就由硬规则或人工接管。关于这个置信度是如何校准的，后文会详细展开。</p>
 <p>在工程调用上，TypeSafe AI 接入了 Cloudflare AI Gateway 与 Vercel 基础设施。配合官方 <code>@ai-sdk/typesafe-ai</code> 适配层，核心代码通过 <code>experimental_evaluate</code> 声明判断原语即可：</p>
 <div class="codehilite"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">experimental_evaluate</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">'@ai-sdk/typesafe-ai'</span><span class="p">;</span>
@@ -1352,7 +1352,7 @@ button:focus-visible {
 <ol>
 <li><code>choice</code>: pick one option from an enum list.</li>
 <li><code>score</code>: score on an ordered discrete scale, such as 0 to 10.</li>
-<li><code>noul</code>: a three-way boolean, true, false, or unknown.</li>
+<li><code>noul</code>: binary classification probability (boolean decision, e.g., true/false or yes/no).</li>
 </ol>
 <p>Each output ships a confidence value. Many of us have watched LLMs emit wrong JSON with a smug probability. Jev says that confidence is calibrated. Downstream code can set a threshold and hand low-confidence cases to rules or humans. How that calibration is trained comes later.</p>
 <p>On the wiring side, TypeSafe AI sits on Cloudflare AI Gateway and Vercel. With <code>@ai-sdk/typesafe-ai</code>, the call is <code>experimental_evaluate</code>:</p>
